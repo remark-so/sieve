@@ -308,7 +308,7 @@ def cmd_hook(args):
     if run:
         found = json.loads((run / "proposals.json").read_text())
         n = len(found.get("proposals", []))
-        notify(f"sieve · {n} learning{'s' if n != 1 else ''} ready to review · /sieve")
+        notify(f"Sieve · {n} learning{'s' if n != 1 else ''} ready to review · /sieve")
         return
     if running(state):
         return
@@ -329,7 +329,7 @@ def cmd_hook(args):
     )
     people = sum(1 for f in unread if by_a_person(f))
     if people:
-        notify(f"sieve · reading {people} past conversation{'s' if people != 1 else ''} in the background")
+        notify(f"Sieve · reading {people} past conversation{'s' if people != 1 else ''} in the background")
 
 
 def extract_json(text):
@@ -357,7 +357,7 @@ def cmd_background(args):
             return
         claude = shutil.which("claude")
         if not claude:
-            print(f"{time.ctime()} sieve: claude not on PATH")
+            print(f"{time.ctime()} Sieve: claude not on PATH")
             return
         cmd = [claude, "-p", f"/sieve:sieve --background {run}",
                "--allowedTools", "Read,Glob,Grep,Agent",
@@ -373,7 +373,7 @@ def cmd_background(args):
         found = extract_json(out.stdout)
         (run / "background-output.txt").write_text(out.stdout + out.stderr)
         if found is None:
-            print(f"{time.ctime()} sieve: no JSON from background review of {root}, see {run}")
+            print(f"{time.ctime()} Sieve: no JSON from background review of {root}, see {run}")
             return
         if not found.get("proposals") and not found.get("conversations"):
             commit(run)

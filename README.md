@@ -1,21 +1,40 @@
-# sieve
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/logo-dark.svg">
+  <img src="./assets/logo-light.svg" alt="Sieve logo" width="360">
+</picture>
 
-Every conversation you have with Claude Code about a project teaches it something: a convention you corrected, a library that turned out to be a bad fit, the one command that actually starts the dev server. Then the conversation ends and the next person, or the next session, starts from zero.
+[![License: MIT](https://img.shields.io/badge/license-MIT-orange?style=flat-square)](./LICENSE)
+[![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757?style=flat-square)](https://code.claude.com/docs/en/plugins)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue?style=flat-square)](./.claude-plugin/plugin.json)
 
-`/sieve` reads the conversations you have had about the current repository, keeps the few lessons worth sharing, and, after you approve them, writes them to a skill inside the repo. Commit that file and every teammate's Claude reads it.
+Sieve turns your past Claude Code conversations about a repository into a short, shared skill of rules and lessons that every teammate's Claude reads. It reads only what you and Claude wrote to each other, keeps the few lessons another person would trip over without, and writes them to the repo after you approve them. Next to them it keeps a log with one line per conversation, so the team can see what was worked on and when.
 
-## Install
+<img src="./assets/review.svg" alt="Reviewing Sieve's proposals in Claude Code" width="100%">
 
-In Claude Code:
+## ✨ Highlight features
+
+- **Little, high-quality output:** most conversations produce nothing. A lesson is kept only when it applies beyond the task it came from and a teammate would otherwise repeat the mistake.
+- **Rules and insights:** conclusions people reached, such as corrections, conventions and decisions, plus what Claude proved while working, such as an approach that failed and the one that worked.
+- **You approve everything:** each proposal comes with the quote it came from. Nothing reaches the repo until you pick what to keep, and nothing is committed for you.
+- **Conversation log:** a markdown table with the date, the person and a one-line summary of each conversation.
+- **Reads each conversation once:** Sieve remembers where it stopped in every conversation. A conversation that continues later is read from where it stopped.
+- **Cheap to run:** tool output, file dumps and screenshots are dropped before any model reads anything, which is usually over 99% of a transcript. Batches are read in parallel by Haiku.
+- **Runs on its own if you want:** with `/sieve --attach`, it checks for unread conversations every time you open Claude Code in the repo.
+
+## ⚡️ Quickstart
+
+Requires [Claude Code](https://code.claude.com) and Python 3.
+
+#### Install
+
+In Claude Code, run:
 
 ```
 /plugin marketplace add rodrigosnader/sieve
 /plugin install sieve@sieve
 ```
 
-Requires Python 3 (standard library only).
-
-## Use
+#### Run
 
 Open Claude Code in any repository and run:
 
@@ -23,53 +42,39 @@ Open Claude Code in any repository and run:
 /sieve
 ```
 
-1. **Scan.** Finds this repo's conversations on your machine (including its worktrees), and keeps only what people and Claude wrote to each other. Tool output, file dumps and screenshots are dropped, which is usually over 99% of the weight. Sessions opened by an app or a script through the Agent SDK or `claude -p` are skipped.
-2. **Read.** Splits the new text into batches and reads them in parallel with a small, cheap model (Haiku), which returns candidate lessons.
-3. **Select.** Your session's model compares the candidates with what the repo already has, merges duplicates, drops anything too specific to one task, and rewrites each survivor as the general rule its evidence supports.
-4. **Review.** You see each proposal with the quote it came from, and pick what to keep.
-5. **Write.** Kept items go to `.claude/skills/project-learnings/SKILL.md`, and a one-line summary of each conversation goes to `conversations.md` next to it. Nothing is committed for you.
+Sieve reads the conversations you have had about that repository, shows what it found, and asks which ones to keep. Commit the files it writes, and your team's Claude reads them from then on.
 
-Run it again any time. Only text written since the last run is read, and a conversation that continued after the last run is read from where it stopped.
-
-## Run it automatically
+## 🔁 Run it automatically
 
 ```
 /sieve --attach
 ```
 
-From then on, every time you start a Claude Code conversation in this repository, sieve checks in the background for conversations it has not read and does steps 1 to 3 on its own. A single line at the top of the terminal says when it starts reading (`sieve · reading 3 past conversations in the background`) and when proposals are ready (`sieve · 5 learnings ready to review · /sieve`). The line is only for you; Claude does not see it, so the conversation is not affected. `/sieve` then goes straight to the review. Nothing reaches the repo without your review.
+Every time you open Claude Code in the repository, Sieve checks in the background for conversations it has not read and prepares its proposals. A single line at the top of the terminal shows what it is doing:
 
-`/sieve --detach` turns it off. `/sieve --status` says what is pending.
+```
+Sieve · reading 3 past conversations in the background
+Sieve · 4 learnings ready to review · /sieve
+```
 
-Attaching is per person and per repository, and is stored on your machine, not in the repo.
+Only you see that line; Claude does not, so your conversation is not affected. Run `/sieve` to review, `/sieve --status` to see what is pending, and `/sieve --detach` to turn it off.
 
-## The conversations log
+## 📁 What it writes
 
-`conversations.md` is a markdown table with one row per conversation: date, id, who had it, and one sentence on what was worked on and how it ended. It is plain markdown so it reads as a table on GitHub, Claude reads it directly, and each conversation is one line in a git diff. A conversation that continues later gets its row updated, not a new one.
+Two files in your repository, both plain markdown:
 
-## What it keeps
+| File | What's in it |
+|---|---|
+| `.claude/skills/project-learnings/SKILL.md` | The approved rules and insights, each with the date it was learned. Claude Code offers it to Claude at the start of every conversation in the repo. |
+| `.claude/skills/project-learnings/conversations.md` | One row per conversation: date, id, who had it, and what was worked on. |
 
-Two kinds of lessons, and only when someone else working on the repo would otherwise make the same mistake or ask the same question:
+## 🔒 What stays on your machine
 
-- **Rules:** conclusions a person reached, such as a correction, a convention, or a decision with its reason.
-- **Insights:** things Claude learned while working, with proof in the conversation. An approach failed for a stated reason and the alternative worked, or a fact about the environment was found by running something.
+Your conversations never leave your computer, and Sieve only writes to the repo what you approve. Which conversations it has read, the condensed text of each run and whether a repo is attached are kept in `~/.claude/sieve/`. Each teammate runs Sieve on their own conversations; the two files above are the shared part.
 
-It leaves out task-specific details, progress reports, anything the code or git history already says, secrets, and one person's personal taste. Personal items are counted and offered separately; they never go in the repo.
+## 👋 Contribute
 
-There is no quota. Most conversations produce nothing, and that is the expected result.
-
-## Where things live
-
-| What | Where | Shared |
-|---|---|---|
-| Your conversations | `~/.claude/projects/<repo path with / replaced by ->/` | No, stays on your machine |
-| Which conversations sieve has read | `~/.claude/sieve/state/` | No |
-| Condensed batches of each run | `~/.claude/sieve/runs/` | No |
-| Whether this repo is attached | `~/.claude/sieve/state/` | No |
-| The learnings | `<repo>/.claude/skills/project-learnings/SKILL.md` | Yes, through git |
-| The conversations log | `<repo>/.claude/skills/project-learnings/conversations.md` | Yes, through git |
-
-Each teammate runs `/sieve` on their own conversations. The learnings file is the shared part, reviewed like any other change.
+Issues and pull requests are welcome. The command lives in [`skills/sieve/SKILL.md`](./skills/sieve/SKILL.md), the reader that goes through each batch in [`agents/reader.md`](./agents/reader.md), and the script that condenses transcripts in [`skills/sieve/scripts/sieve.py`](./skills/sieve/scripts/sieve.py).
 
 ## License
 

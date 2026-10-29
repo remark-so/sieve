@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="128" viewBox="0 0 440 128">
+  <g fill="none" stroke="#111827" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 38 H110"/>
+    <path d="M16 38 C18 70 38 88 60 88 C82 88 102 70 104 38"/>
+    <path d="M110 38 L132 30"/>
+  </g>
+  <circle cx="20.0" cy="50" r="2.6" fill="#111827"/><circle cx="30.0" cy="50" r="2.6" fill="#111827"/><circle cx="40.0" cy="50" r="2.6" fill="#111827"/><circle cx="50.0" cy="50" r="2.6" fill="#111827"/><circle cx="60.0" cy="50" r="2.6" fill="#111827"/><circle cx="70.0" cy="50" r="2.6" fill="#111827"/><circle cx="80.0" cy="50" r="2.6" fill="#111827"/><circle cx="90.0" cy="50" r="2.6" fill="#111827"/><circle cx="100.0" cy="50" r="2.6" fill="#111827"/><circle cx="26.0" cy="62" r="2.6" fill="#111827"/><circle cx="36.0" cy="62" r="2.6" fill="#111827"/><circle cx="46.0" cy="62" r="2.6" fill="#111827"/><circle cx="56.0" cy="62" r="2.6" fill="#111827"/><circle cx="66.0" cy="62" r="2.6" fill="#111827"/><circle cx="76.0" cy="62" r="2.6" fill="#111827"/><circle cx="86.0" cy="62" r="2.6" fill="#111827"/><circle cx="36.0" cy="74" r="2.6" fill="#111827"/><circle cx="46.0" cy="74" r="2.6" fill="#111827"/><circle cx="56.0" cy="74" r="2.6" fill="#111827"/><circle cx="66.0" cy="74" r="2.6" fill="#111827"/><circle cx="76.0" cy="74" r="2.6" fill="#111827"/>
+  <circle cx="60" cy="102" r="4.5" fill="#F59E0B"/>
+  <circle cx="60" cy="116" r="3.2" fill="#F59E0B" opacity=".7"/>
+  <text x="158" y="80" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="64" font-weight="700" letter-spacing="-1.5" fill="#111827">Sieve</text>
+  <text x="161" y="108" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#6B7280">for Claude Code</text>
+</svg>
