@@ -8,7 +8,7 @@ Claude wrote to each other, remembers how far it has read in every
 conversation, and writes the new part as markdown batches.
 
   sieve.py scan    [--cwd PATH]     write batches for unread text, print manifest
-  sieve.py apply   RUN_DIR          write a run's proposals.json to the repo, mark it read
+  sieve.py apply   RUN_DIR          write a run's result.json to the repo, mark it read
   sieve.py commit  RUN_DIR          mark a run's text as read without writing
   sieve.py status  [--cwd PATH]     what is pending or attached
   sieve.py attach  [--cwd PATH]     read new conversations at every session start
@@ -18,6 +18,7 @@ conversation, and writes the new part as markdown batches.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -225,12 +226,14 @@ def scan(root, batch_chars=DEFAULT_BATCH_CHARS, exclude=()):
         p.write_text(text)
         paths.append(str(p))
     (run_dir / "cursors.json").write_text(json.dumps({"root": root, "sessions": cursors}))
+    write_context(run_dir, root)
 
     skill_dir = Path(root) / ".claude" / "skills" / "sieve-learnings"
     return {
         "repo": root,
         "is_git_repo": (Path(root) / ".git").exists(),
         "learnings": str(skill_dir / "SKILL.md"),
+        "context": str(run_dir / "context.json"),
         "conversations_log": str(skill_dir / "conversations.md"),
         "run": str(run_dir),
         "conversations": len(blocks),
@@ -257,10 +260,10 @@ description: Rules and lessons learned by people working on this repository with
 
 # Learnings
 
-## Rules
-
-## Insights
+Rules and insights from past Claude Code conversations about this repository, kept by Sieve. Follow the rules; use the insights. Conversations are listed by id in conversations.md.
 """
+
+COLUMNS = ["ID", "Type", "Learning", "Why", "Conversations", "Added", "Updated"]
 
 LOG_HEADER = """# Conversations
 
@@ -269,6 +272,105 @@ One line per Claude Code conversation about this repository, newest first. Writt
 | Date | Conversation | Who | Summary |
 |---|---|---|---|
 """
+
+CELL_SPLIT = re.compile(r"(?<!\\)\|")
+
+
+def cell(text):
+    return (text or "").replace("\n", " ").replace("|", "\\|").strip()
+
+
+def uncell(text):
+    return text.replace("\\|", "|").strip()
+
+
+def read_learnings(path):
+    """The learnings table as a list of dicts, plus the text above it."""
+    if not path.exists():
+        return LEARNINGS_HEADER, []
+    text = path.read_text()
+    rows, head = [], []
+    in_table = False
+    for line in text.splitlines():
+        if line.startswith("| ID |"):
+            in_table = True
+            continue
+        if in_table and line.startswith("|---"):
+            continue
+        if in_table and line.startswith("|"):
+            cells = [uncell(c) for c in CELL_SPLIT.split(line.strip())[1:-1]]
+            row = dict(zip(["id", "type", "learning", "why", "conversations", "added", "updated"], cells))
+            row["conversations"] = [c.strip() for c in row.get("conversations", "").split(",") if c.strip()]
+            rows.append(row)
+            continue
+        in_table = False
+        head.append(line)
+    if not rows:
+        # Files written before the table format: "- text (date)" under ## Rules / ## Insights.
+        kind, head = None, []
+        for line in text.splitlines():
+            if line.startswith("## "):
+                kind = "insight" if "insight" in line.lower() else "rule"
+                continue
+            m = re.match(r"^- (.*?)(?: \((\d{4}-\d{2}-\d{2})\))?$", line)
+            if kind and m:
+                rows.append(new_row(kind, m.group(1), "", [], m.group(2) or ""))
+            elif not kind:
+                head.append(line)
+    return "\n".join(head).rstrip() + "\n", rows
+
+
+def new_row(kind, learning, why, conversations, date):
+    rid = hashlib.sha1(learning.encode()).hexdigest()[:6]
+    return {"id": rid, "type": kind, "learning": learning, "why": why,
+            "conversations": conversations, "added": date, "updated": date}
+
+
+def write_table(path, head, rows):
+    order = {"rule": 0, "insight": 1}
+    rows = sorted(rows, key=lambda r: (order.get(r["type"], 2), r["added"], r["id"]))
+    lines = [head.rstrip(), "",
+             "| " + " | ".join(COLUMNS) + " |",
+             "|" + "---|" * len(COLUMNS)]
+    for r in rows:
+        lines.append("| " + " | ".join(cell(x) for x in [
+            r["id"], r["type"], r["learning"], r["why"],
+            ", ".join(r["conversations"]), r["added"], r["updated"]]) + " |")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n")
+
+
+def apply_ops(path, ops):
+    """Apply the judge's add/update/remove operations. Returns counts."""
+    head, rows = read_learnings(path)
+    by_id = {r["id"]: r for r in rows}
+    today = time.strftime("%Y-%m-%d")
+    done = {"added": 0, "updated": 0, "removed": 0}
+    for op in ops:
+        kind = op.get("op")
+        if kind == "add" and op.get("learning"):
+            row = new_row(op.get("type", "rule"), op["learning"].strip(), (op.get("why") or "").strip(),
+                          list(op.get("conversations") or []), op.get("date") or today)
+            while row["id"] in by_id:
+                row["id"] = hashlib.sha1(row["id"].encode()).hexdigest()[:6]
+            by_id[row["id"]] = row
+            done["added"] += 1
+        elif kind == "update" and op.get("id") in by_id:
+            row = by_id[op["id"]]
+            if op.get("learning"):
+                row["learning"] = op["learning"].strip()
+            if op.get("why") is not None and "why" in op:
+                row["why"] = (op.get("why") or "").strip()
+            for c in op.get("add_conversations") or []:
+                if c not in row["conversations"]:
+                    row["conversations"].append(c)
+            row["updated"] = op.get("date") or today
+            done["updated"] += 1
+        elif kind == "remove" and op.get("id") in by_id:
+            del by_id[op["id"]]
+            done["removed"] += 1
+    write_table(path, head, list(by_id.values()))
+    return done
 
 
 def git_user(root):
@@ -280,73 +382,50 @@ def git_user(root):
         return os.environ.get("USER", "")
 
 
-def item_line(p):
-    text = p["text"].strip()
-    why = (p.get("why") or "").strip()
-    if why and why not in text:
-        text += " " + why
-    return f"- {text} ({p.get('date', time.strftime('%Y-%m-%d'))})"
-
-
-def write_learnings(path, proposals):
-    lines = (path.read_text() if path.exists() else LEARNINGS_HEADER).splitlines()
-    added = 0
-    for p in proposals:
-        new = item_line(p)
-        old = (p.get("edits") or "").strip()
-        hit = next((i for i, l in enumerate(lines) if old and l.startswith("- ") and old in l), None)
-        if hit is not None:
-            lines[hit] = new
-            continue
-        section = "## Insights" if p.get("kind") == "insight" else "## Rules"
-        if section not in lines:
-            lines += ["", section]
-        top = lines.index(section)
-        if top + 1 >= len(lines) or lines[top + 1].strip():
-            lines.insert(top + 1, "")  # blank line under the heading
-        i = top + 2
-        while i < len(lines) and not lines[i].startswith("## "):
-            i += 1
-        while i > top + 2 and lines[i - 1].strip() == "":  # after the last item
-            i -= 1
-        lines.insert(i, new)
-        added += 1
-    text = "\n".join(lines)
-    text = re.sub(r"\n*^(#{1,2} .*)$\n*", r"\n\n\1\n\n", text, flags=re.M)  # one blank line around headings
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text.strip() + "\n")
-    return added
-
-
 def write_log(path, conversations, who):
     lines = (path.read_text() if path.exists() else LOG_HEADER).splitlines()
     head = next(i for i, l in enumerate(lines) if l.startswith("|---")) + 1
     for c in sorted(conversations, key=lambda c: c.get("date", "")):
-        summary = c.get("summary", "").replace("|", "\\|").replace("\n", " ")
-        row = f"| {c.get('date', '')} | {c['id']} | {who} | {summary} |"
-        hit = next((i for i, l in enumerate(lines) if l.startswith(f"| ") and f"| {c['id']} |" in l), None)
+        row = f"| {c.get('date', '')} | {c['id']} | {who} | {cell(c.get('summary', ''))} |"
+        hit = next((i for i, l in enumerate(lines) if l.startswith("| ") and f"| {c['id']} |" in l), None)
         if hit is not None:
             lines[hit] = row
         else:
             lines.insert(head, row)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines).rstrip() + "\n")
     return len(conversations)
 
 
+def write_context(run_dir, root):
+    """What the judge compares candidates against: the current table and the docs."""
+    folder = Path(root) / ".claude" / "skills" / "sieve-learnings"
+    _, rows = read_learnings(folder / "SKILL.md")
+    docs = {}
+    for name in ("CLAUDE.md", "AGENTS.md", ".claude/CLAUDE.md"):
+        p = Path(root) / name
+        if p.exists():
+            docs[name] = p.read_text()[:20000]
+    (run_dir / "context.json").write_text(json.dumps({"learnings": rows, "docs": docs}, indent=1))
+
+
 def apply(run_dir, announce=False):
-    """Write a run's proposals to the repo and mark its text as read."""
-    found = json.loads((run_dir / "proposals.json").read_text())
+    """Write a run's result.json to the repo and mark its text as read."""
+    found = json.loads((run_dir / "result.json").read_text())
     root = json.loads((run_dir / "cursors.json").read_text())["root"]
     folder = Path(root) / ".claude" / "skills" / "sieve-learnings"
-    added = write_learnings(folder / "SKILL.md", found.get("proposals", [])) if found.get("proposals") else 0
-    logged = write_log(folder / "conversations.md", found.get("conversations", []), git_user(root)) if found.get("conversations") else 0
+    done = {"added": 0, "updated": 0, "removed": 0}
+    if found.get("ops"):
+        done = apply_ops(folder / "SKILL.md", found["ops"])
+    logged = 0
+    if found.get("conversations"):
+        logged = write_log(folder / "conversations.md", found["conversations"], git_user(root))
     commit(run_dir)
     state = load_state(root)
     # Only a background run announces itself; after /sieve the person already read the report.
-    state["last_applied"] = {"learnings": added, "conversations": logged, "seen": not announce}
+    state["last_applied"] = {**done, "conversations": logged, "seen": not announce}
     save_state(root, state)
-    return {"learnings": added, "conversations": logged, "folder": str(folder)}
+    return {**done, "conversations": logged, "folder": str(folder)}
 
 
 def running(state):
@@ -425,9 +504,9 @@ def cmd_hook(args):
     if done and not done.get("seen"):
         done["seen"] = True
         save_state(root, state)
-        n = done["learnings"]
-        if n:
-            news.append(f"added {n} learning{'s' if n != 1 else ''} to .claude/skills/sieve-learnings")
+        parts = [f"{done[k]} {k}" for k in ("added", "updated", "removed") if done.get(k)]
+        if parts:
+            news.append(", ".join(parts) + " in .claude/skills/sieve-learnings")
 
     current = data.get("session_id")
     unread = [] if running(state) else [
@@ -494,7 +573,7 @@ def cmd_background(args):
         if found is None:
             print(f"{time.ctime()} Sieve: no JSON from background review of {root}, see {run}")
             return
-        (run / "proposals.json").write_text(json.dumps(found, indent=1))
+        (run / "result.json").write_text(json.dumps(found, indent=1))
         apply(run, announce=True)
     finally:
         state = load_state(root)

@@ -5,7 +5,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-orange?style=flat-square)](./LICENSE)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757?style=flat-square)](https://code.claude.com/docs/en/plugins)
-[![Version](https://img.shields.io/badge/version-0.5.0-blue?style=flat-square)](./.claude-plugin/plugin.json)
+[![Version](https://img.shields.io/badge/version-0.6.0-blue?style=flat-square)](./.claude-plugin/plugin.json)
 
 Sieve reads your past Claude Code conversations about a repository, keeps the few lessons worth sharing, and writes them to a skill that every teammate's Claude reads.
 
@@ -15,10 +15,12 @@ Sieve reads your past Claude Code conversations about a repository, keeps the fe
 
 - **Little, high-quality output:** most conversations produce nothing. A lesson is kept only when it applies beyond the task it came from and a teammate would otherwise repeat the mistake.
 - **Rules and insights:** conclusions people reached, such as corrections, conventions and decisions, plus what Claude proved while working, such as an approach that failed and the one that worked.
+- **Updates, not just appends:** new findings are compared with what the table already says. A learning gets reworded when a later conversation sharpens it, gains supporting conversations when it comes up again, and is removed when it turns out wrong.
+- **Three layers:** Haiku reads the conversations and extracts candidates, Opus compares the candidates with the current table and decides what changes, and a script applies those changes to the table without touching anything else.
 - **No questions asked:** Sieve does the work and tells you in one line what it added. You review the result in the git diff, and nothing is committed for you.
 - **Conversation log:** a markdown table with the date, the person and a one-line summary of each conversation.
 - **Reads each conversation once:** Sieve remembers where it stopped in every conversation. A conversation that continues later is read from where it stopped.
-- **Cheap to run:** tool output, file dumps and screenshots are dropped before any model reads anything, which is usually over 99% of a transcript. Batches are read in parallel by Haiku.
+- **Cheap to run:** tool output, file dumps and screenshots are dropped before any model reads anything, which is usually over 99% of a transcript. Haiku reads the bulk in parallel; Opus only sees the short list of candidates.
 - **Runs on its own if you want:** with `/sieve --attach`, it checks for unread conversations every time you open Claude Code in the repo.
 
 ## ⚡️ Quickstart
@@ -61,11 +63,11 @@ Only you see that line; Claude does not, so your conversation is not affected. `
 
 ## 📁 What it writes
 
-Two files in your repository, both plain markdown:
+Two files in your repository, both markdown tables with one row per line, so teammates' changes merge cleanly in git:
 
 | File | What's in it |
 |---|---|
-| `.claude/skills/sieve-learnings/SKILL.md` | The rules and insights, each with the date it was learned. Claude Code offers it to Claude at the start of every conversation in the repo. |
+| `.claude/skills/sieve-learnings/SKILL.md` | A table of rules and insights. Each row has a fixed id, the reason, the conversations that support it, and when it was added and last updated. Claude Code offers it to Claude at the start of every conversation in the repo. |
 | `.claude/skills/sieve-learnings/conversations.md` | One row per conversation: date, id, who had it, and what was worked on. |
 
 ## 🔒 What stays on your machine
