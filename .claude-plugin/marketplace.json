@@ -2,7 +2,9 @@
   "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
   "name": "sieve",
   "description": "Distill Claude Code conversations into shared project learnings.",
-  "owner": { "name": "Rodrigo Nader" },
+  "owner": {
+    "name": "Remark"
+  },
   "plugins": [
     {
       "name": "sieve",

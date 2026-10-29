@@ -32,7 +32,7 @@ Requires [Claude Code](https://code.claude.com) and Python 3.
 In Claude Code, run:
 
 ```
-/plugin marketplace add rodrigosnader/sieve
+/plugin marketplace add remark-so/sieve
 /plugin install sieve@sieve
 ```
 
