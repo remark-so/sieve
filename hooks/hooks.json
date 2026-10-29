@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/sieve/scripts/sieve.py\" hook",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

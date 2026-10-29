@@ -1,0 +1,14 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
+  "name": "sieve",
+  "description": "Distill Claude Code conversations into shared project learnings.",
+  "owner": { "name": "Rodrigo Nader" },
+  "plugins": [
+    {
+      "name": "sieve",
+      "description": "Turn past Claude Code conversations about a repo into a shared skill of rules and lessons.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
