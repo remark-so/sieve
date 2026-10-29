@@ -1,6 +1,6 @@
 ---
 name: sieve
-description: Read this project's past Claude Code conversations that have not been read yet, log a one-line summary of each, extract the few rules and insights worth sharing, and propose them for the repo's shared project-learnings skill. Run with /sieve; /sieve --attach to do it automatically at every session start, /sieve --detach to stop.
+description: Read this project's past Claude Code conversations that have not been read yet, log a one-line summary of each, extract the few rules and insights worth sharing, and propose them for the repo's shared sieve-learnings skill. Run with /sieve; /sieve --attach to do it automatically at every session start, /sieve --detach to stop.
 argument-hint: "[--attach | --detach | --status]"
 disable-model-invocation: true
 ---
@@ -18,7 +18,7 @@ The script used below is `python3 "${CLAUDE_PLUGIN_ROOT}/skills/sieve/scripts/si
 - `--attach`: run `sieve.py attach --cwd "$PWD"`. Tell the user in one or two sentences: from now on, every time they start a Claude Code conversation in this repository, Sieve checks in the background for conversations it has not read; a single line at the top of the terminal shows when it is reading and when learnings are ready to review with /sieve. Nothing is written to the repo without their review. Stop.
 - `--detach`: run `sieve.py detach --cwd "$PWD"`, confirm in one sentence, stop.
 - `--status`: run `sieve.py status --cwd "$PWD"` and answer in one sentence. Stop.
-- `--background <run dir>`: you were started by the hook with no person present. Do steps 2 and 3 for that run dir (its batches are the `batch-*.md` files in it; the learnings and log paths are `<repo>/.claude/skills/project-learnings/SKILL.md` and `conversations.md`). Then print ONLY the JSON object described in "Background output" and stop. Do not write files, ask questions or run commit.
+- `--background <run dir>`: you were started by the hook with no person present. Do steps 2 and 3 for that run dir (its batches are the `batch-*.md` files in it; the learnings and log paths are `<repo>/.claude/skills/sieve-learnings/SKILL.md` and `conversations.md`). Then print ONLY the JSON object described in "Background output" and stop. Do not write files, ask questions or run commit.
 - No arguments: the interactive run, below.
 
 ## 1. Scan
@@ -60,7 +60,7 @@ Write the kept items to the learnings file. Create it if missing, with this shap
 
 ```markdown
 ---
-name: project-learnings
+name: sieve-learnings
 description: Rules and lessons learned by people working on this repository with Claude. Read at the start of any task in this repository, before planning or writing code. conversations.md in the same folder logs what past conversations worked on.
 ---
 

@@ -5,11 +5,11 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-orange?style=flat-square)](./LICENSE)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757?style=flat-square)](https://code.claude.com/docs/en/plugins)
-[![Version](https://img.shields.io/badge/version-0.3.0-blue?style=flat-square)](./.claude-plugin/plugin.json)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue?style=flat-square)](./.claude-plugin/plugin.json)
 
 Sieve reads your past Claude Code conversations about a repository, keeps the few lessons worth sharing, and, once you approve them, writes them to a skill that every teammate's Claude reads.
 
-<img src="./assets/review.svg" alt="Reviewing Sieve's proposals in Claude Code" width="100%">
+<img src="./assets/sieve-review.svg" alt="Reviewing Sieve's proposals in Claude Code" width="100%">
 
 ## ✨ Highlight features
 
@@ -65,8 +65,8 @@ Two files in your repository, both plain markdown:
 
 | File | What's in it |
 |---|---|
-| `.claude/skills/project-learnings/SKILL.md` | The approved rules and insights, each with the date it was learned. Claude Code offers it to Claude at the start of every conversation in the repo. |
-| `.claude/skills/project-learnings/conversations.md` | One row per conversation: date, id, who had it, and what was worked on. |
+| `.claude/skills/sieve-learnings/SKILL.md` | The approved rules and insights, each with the date it was learned. Claude Code offers it to Claude at the start of every conversation in the repo. |
+| `.claude/skills/sieve-learnings/conversations.md` | One row per conversation: date, id, who had it, and what was worked on. |
 
 ## 🔒 What stays on your machine
 

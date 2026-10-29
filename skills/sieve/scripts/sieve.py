@@ -203,7 +203,7 @@ def scan(root, batch_chars=DEFAULT_BATCH_CHARS, exclude=()):
         paths.append(str(p))
     (run_dir / "cursors.json").write_text(json.dumps({"root": root, "sessions": cursors}))
 
-    skill_dir = Path(root) / ".claude" / "skills" / "project-learnings"
+    skill_dir = Path(root) / ".claude" / "skills" / "sieve-learnings"
     return {
         "repo": root,
         "learnings": str(skill_dir / "SKILL.md"),
