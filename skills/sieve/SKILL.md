@@ -15,7 +15,7 @@ The script used below is `python3 "${CLAUDE_PLUGIN_ROOT}/skills/sieve/scripts/si
 
 ## Pick the mode from the arguments: `$ARGUMENTS`
 
-- No arguments: run `sieve.py start --cwd "$PWD"` and nothing else. If it printed `"started": true`, reply with one sentence: Sieve is reading the conversations in the background and a notification will say what changed when it finishes. If it was already running, say so in one sentence. Do not read files, launch agents or do any of the steps below.
+- No arguments: run `sieve.py start --cwd "$PWD"` and nothing else. If it printed `"started": true`, reply with one sentence: Sieve is reading the conversations in the background and will write what it finds to `.claude/skills/sieve-learnings/`. If it was already running, say so in one sentence. Do not read files, launch agents or do any of the steps below.
 - `--attach`: run `sieve.py attach --cwd "$PWD"`. Tell the user in one sentence that from now on Sieve reads new conversations in the background whenever they open Claude Code in this repository, and a single line in the terminal says when it changes something. Stop.
 - `--detach`: run `sieve.py detach --cwd "$PWD"`, confirm in one sentence, stop.
 - `--status`: run `sieve.py status --cwd "$PWD"` and answer in one sentence. Stop.

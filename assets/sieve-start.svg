@@ -9,8 +9,8 @@
 <g font-family="SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15">
 <text x="36.0" y="76" fill="#8B949E">&gt;</text>
 <text x="54.1" y="76" fill="#E6EDF3" font-weight="700">/sieve</text>
-<text x="54.1" y="126" fill="#E6EDF3">Sieve is reading your conversations in the background. A notification</text>
-<text x="54.1" y="151" fill="#E6EDF3">will say what changed when it finishes.</text>
+<text x="54.1" y="126" fill="#E6EDF3">Sieve is reading your conversations in the background and will write</text>
+<text x="54.1" y="151" fill="#E6EDF3">what it finds to .claude/skills/sieve-learnings/.</text>
 <text x="36.0" y="201" fill="#8B949E">$</text>
 <text x="54.1" y="201" fill="#E6EDF3" font-weight="700">git diff --word-diff .claude/skills/sieve-learnings/SKILL.md</text>
 <text x="54.1" y="251" fill="#8B949E">|</text>

@@ -605,22 +605,6 @@ def extract_json(text):
         return None
 
 
-def desktop_notice(text):
-    """A macOS notification; silently skipped elsewhere."""
-    if sys.platform == "darwin" and shutil.which("osascript"):
-        msg = text.replace("\\", "").replace('"', "'")
-        subprocess.run(["osascript", "-e", f'display notification "{msg}" with title "Sieve"'],
-                       capture_output=True)
-
-
-def describe(done, repo):
-    parts = [f"{done[k]} {k}" for k in ("added", "updated", "removed") if done.get(k)]
-    name = Path(repo).name
-    if parts:
-        return f"{', '.join(parts)} in {name}'s learnings"
-    return f"Nothing new to learn in {name}"
-
-
 def cmd_start(args):
     """/sieve: run the whole thing in a separate process and return at once."""
     root = resolve_repo(args.cwd)
@@ -631,7 +615,7 @@ def cmd_start(args):
     log = SIEVE_HOME / "background.log"
     log.parent.mkdir(parents=True, exist_ok=True)
     subprocess.Popen(
-        [sys.executable, str(SCRIPT), "background", "--cwd", root, "--notify"],
+        [sys.executable, str(SCRIPT), "background", "--cwd", root],
         cwd=root, start_new_session=True,
         stdin=subprocess.DEVNULL, stdout=log.open("a"), stderr=subprocess.STDOUT,
         env={**os.environ, "SIEVE_BACKGROUND": "1"},
@@ -651,8 +635,6 @@ def cmd_background(args):
         run = Path(manifest["run"])
         if not manifest["conversations"]:
             commit(run)  # only tool traffic or SDK sessions: nothing to propose
-            if args.notify:
-                desktop_notice(describe({}, root))
             return
         claude = shutil.which("claude")
         if not claude:
@@ -673,15 +655,9 @@ def cmd_background(args):
         (run / "background-output.txt").write_text(out.stdout + out.stderr)
         if found is None:
             print(f"{time.ctime()} Sieve: no JSON from background review of {root}, see {run}")
-            if args.notify:
-                desktop_notice(f"Could not finish in {Path(root).name}. Run /sieve again.")
             return
         (run / "result.json").write_text(json.dumps(found, indent=1))
-        # A run started by /sieve reports with a desktop notification; one started
-        # by the hook reports in the terminal line of the next session.
-        done = apply(run, announce=not args.notify)
-        if args.notify:
-            desktop_notice(describe(done, root))
+        apply(run, announce=True)
     finally:
         state = load_state(root)
         if state.get("running") == os.getpid():
@@ -704,7 +680,6 @@ def main():
     b = sub.add_parser("background")
     b.add_argument("--cwd", required=True)
     b.add_argument("--exclude", action="append")
-    b.add_argument("--notify", action="store_true")
     sub.add_parser("start").add_argument("--cwd", default=os.getcwd())
     args = ap.parse_args()
     {
