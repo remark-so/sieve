@@ -29,6 +29,7 @@ import shutil
 import subprocess
 import sys
 import time
+from datetime import datetime
 import webbrowser
 from pathlib import Path
 
@@ -198,6 +199,17 @@ def invokes_sieve(record):
     return bool(re.search(r"<command-name>/?(sieve:)?sieve</command-name>", text))
 
 
+def local_date(timestamp):
+    """Transcript timestamps are UTC; dates shown to people are local."""
+    if not timestamp:
+        return ""
+    try:
+        when = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError:
+        return timestamp[:10]
+    return when.astimezone().date().isoformat()
+
+
 def condense(path, start):
     """Return (turns, line_count, meta) for lines after `start`."""
     lines = path.read_text(errors="replace").splitlines()
@@ -218,7 +230,7 @@ def condense(path, start):
             continue
         if r.get("isSidechain") or r.get("isMeta"):
             continue
-        meta.setdefault("date", (r.get("timestamp") or "")[:10])
+        meta.setdefault("date", local_date(r.get("timestamp")))
         meta.setdefault("branch", r.get("gitBranch") or "")
         if kind == "user":
             if invokes_sieve(r):

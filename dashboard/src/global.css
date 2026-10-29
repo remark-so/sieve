@@ -1,6 +1,10 @@
 :root {
   --font-geist: "Geist";
   --font-inter: "Inter";
+  /* Tighter corners than Arc's defaults for a dense data page. */
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  --radius-surface: 10px;
 }
 
 body {

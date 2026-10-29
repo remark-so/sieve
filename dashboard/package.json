@@ -5,10 +5,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build && node scripts/install.mjs",
-    "fetch-arc": "node scripts/fetch-arc.mjs arc-foundation tabs sortable-data-table segmented-control search-field badge metric-card empty-state"
+    "fetch-arc": "node scripts/fetch-arc.mjs arc-foundation tabs sortable-data-table segmented-control search-field badge empty-state button copy-button"
   },
   "dependencies": {
     "@radix-ui/react-tabs": "^1.1.12",
+    "@radix-ui/react-tooltip": "^1.2.7",
     "lucide-react": "^0.468.0",
     "motion": "^12.23.12",
     "react": "^19.1.0",
