@@ -279,9 +279,17 @@ def cmd_attach(args, on=True):
     print(json.dumps({"repo": root, "attached": on}))
 
 
-def hook_output(text):
-    print(json.dumps({"hookSpecificOutput": {
-        "hookEventName": "SessionStart", "additionalContext": text}}))
+def notify(text):
+    # systemMessage is shown to the person in the terminal and never reaches
+    # the model, so the conversation itself is left alone.
+    print(json.dumps({"systemMessage": text}))
+
+
+def by_a_person(path):
+    """Whether a transcript holds a conversation a person had, not SDK traffic."""
+    with path.open("rb") as fh:
+        data = fh.read()
+    return b'"entrypoint":"cli"' in data or b'"entrypoint":"claude-desktop"' in data
 
 
 def cmd_hook(args):
@@ -300,18 +308,14 @@ def cmd_hook(args):
     if run:
         found = json.loads((run / "proposals.json").read_text())
         n = len(found.get("proposals", []))
-        hook_output(
-            f"sieve has {n} proposed learning(s) from earlier conversations in this "
-            "repository waiting for review. In your first reply, tell the user this in "
-            "one short line and suggest running /sieve to review them. Do not review "
-            "them yourself unless asked."
-        )
+        notify(f"sieve · {n} learning{'s' if n != 1 else ''} ready to review · /sieve")
         return
     if running(state):
         return
 
     current = data.get("session_id")
-    if not any(is_unread(f, state) for f in transcripts(root) if f.stem != current):
+    unread = [f for f in transcripts(root) if f.stem != current and is_unread(f, state)]
+    if not unread:
         return
     log = SIEVE_HOME / "background.log"
     log.parent.mkdir(parents=True, exist_ok=True)
@@ -323,6 +327,9 @@ def cmd_hook(args):
         stdin=subprocess.DEVNULL, stdout=log.open("a"), stderr=subprocess.STDOUT,
         env={**os.environ, "SIEVE_BACKGROUND": "1"},
     )
+    people = sum(1 for f in unread if by_a_person(f))
+    if people:
+        notify(f"sieve · reading {people} past conversation{'s' if people != 1 else ''} in the background")
 
 
 def extract_json(text):

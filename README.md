@@ -37,7 +37,7 @@ Run it again any time. Only text written since the last run is read, and a conve
 /sieve --attach
 ```
 
-From then on, every time you start a Claude Code conversation in this repository, sieve checks in the background for conversations it has not read and does steps 1 to 3 on its own. When it has proposals, your next conversation tells you, and `/sieve` takes you straight to the review. Nothing reaches the repo without your review.
+From then on, every time you start a Claude Code conversation in this repository, sieve checks in the background for conversations it has not read and does steps 1 to 3 on its own. A single line at the top of the terminal says when it starts reading (`sieve · reading 3 past conversations in the background`) and when proposals are ready (`sieve · 5 learnings ready to review · /sieve`). The line is only for you; Claude does not see it, so the conversation is not affected. `/sieve` then goes straight to the review. Nothing reaches the repo without your review.
 
 `/sieve --detach` turns it off. `/sieve --status` says what is pending.
 
