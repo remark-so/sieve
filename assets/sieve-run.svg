@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="579" viewBox="0 0 1100 579">
+<rect x=".5" y=".5" width="1099" height="578" rx="12" fill="#0D1117" stroke="#30363D"/>
+<path d="M.5 44 V12.5 A12 12 0 0 1 12.5 .5 H1087.5 A12 12 0 0 1 1099.5 12.5 V44 Z" fill="#161B22"/>
+<line x1="0" y1="44" x2="1100" y2="44" stroke="#30363D"/>
+<circle cx="22" cy="22" r="6" fill="#FF5F57"/>
+<circle cx="42" cy="22" r="6" fill="#FEBC2E"/>
+<circle cx="62" cy="22" r="6" fill="#28C840"/>
+<text x="550.0" y="27" text-anchor="middle" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#8B949E">claude — ~/code/autoscience</text>
+<g font-family="SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15">
+<text x="36.0" y="76" fill="#F59E0B">Sieve · reading 2 past conversations in the background</text>
+<text x="36.0" y="126" fill="#8B949E">&gt;</text>
+<text x="54.1" y="126" fill="#E6EDF3" font-weight="700">/sieve</text>
+<text x="54.1" y="176" fill="#E6EDF3">Added 3 learnings from 2 conversations and logged both conversations.</text>
+<text x="54.1" y="201" fill="#E6EDF3">Review the diff in .claude/skills/sieve-learnings/ and commit.</text>
+<text x="36.0" y="251" fill="#8B949E">$</text>
+<text x="54.1" y="251" fill="#E6EDF3" font-weight="700">git diff .claude/skills/sieve-learnings/SKILL.md</text>
+<text x="54.1" y="301" fill="#79C0FF">## Rules</text>
+<text x="36.0" y="351" fill="#3FB950">+</text>
+<text x="54.1" y="351" fill="#3FB950">- Test anything that writes against a copy of the project data, never the</text>
+<text x="36.0" y="376" fill="#3FB950">+</text>
+<text x="72.1" y="376" fill="#3FB950">real database. Write paths change records that carry audit history. (2026-10-13)</text>
+<text x="54.1" y="426" fill="#79C0FF">## Insights</text>
+<text x="36.0" y="476" fill="#3FB950">+</text>
+<text x="54.1" y="476" fill="#3FB950">- A server started before the view was rebuilt keeps serving the old build.</text>
+<text x="36.0" y="501" fill="#3FB950">+</text>
+<text x="72.1" y="501" fill="#3FB950">Restart it after rebuilding. (2026-10-14)</text>
+<text x="36.0" y="526" fill="#3FB950">+</text>
+<text x="54.1" y="526" fill="#3FB950">- Nodes store their stage by index, so editing stages moves nodes. Warn with</text>
+<text x="36.0" y="551" fill="#3FB950">+</text>
+<text x="72.1" y="551" fill="#3FB950">the number of nodes that will move before saving. (2026-10-13)</text>
+</g></svg>

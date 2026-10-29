@@ -8,12 +8,13 @@ Claude wrote to each other, remembers how far it has read in every
 conversation, and writes the new part as markdown batches.
 
   sieve.py scan    [--cwd PATH]     write batches for unread text, print manifest
-  sieve.py commit  RUN_DIR          mark a run's text as read
-  sieve.py status  [--cwd PATH]     what is pending, attached or proposed
+  sieve.py apply   RUN_DIR          write a run's proposals.json to the repo, mark it read
+  sieve.py commit  RUN_DIR          mark a run's text as read without writing
+  sieve.py status  [--cwd PATH]     what is pending or attached
   sieve.py attach  [--cwd PATH]     read new conversations at every session start
   sieve.py detach  [--cwd PATH]
   sieve.py hook                     SessionStart hook (reads the hook JSON on stdin)
-  sieve.py background --cwd PATH    scan and propose without a person, used by the hook
+  sieve.py background --cwd PATH    scan and write without a person, used by the hook
 """
 
 import argparse
@@ -54,20 +55,42 @@ def repo_root(cwd):
         return cwd
 
 
-def project_dirs(root):
-    """The project's own folder plus the folders of its worktrees."""
-    key = encode(root)
-    if not PROJECTS.is_dir():
-        return []
-    return [
-        d for d in sorted(PROJECTS.iterdir())
-        if d.is_dir() and (d.name == key or d.name.startswith(key + "--claude-worktrees-"))
-    ]
+def folder_cwd(folder):
+    """The directory a project folder's conversations were started in."""
+    for f in folder.glob("*.jsonl"):
+        with f.open(errors="replace") as fh:
+            for _, line in zip(range(50), fh):
+                m = re.search(r'"cwd":"((?:[^"\\]|\\.)*)"', line)
+                if m:
+                    return json.loads('"' + m.group(1) + '"')
+    return None
 
 
 def transcripts(root):
-    for d in project_dirs(root):
-        yield from d.glob("*.jsonl")
+    """Conversations about `root`.
+
+    Every conversation started in the repo or below it (subfolders,
+    worktrees) counts. A conversation started in a folder above the repo
+    counts only if it touched the repo, which shows up as the repo's path
+    somewhere in the transcript.
+    """
+    if not PROJECTS.is_dir():
+        return
+    home = str(Path.home())
+    needle = root.encode()
+    for d in sorted(PROJECTS.iterdir()):
+        if not d.is_dir():
+            continue
+        cwd = folder_cwd(d)
+        if not cwd:
+            continue
+        if cwd == root or cwd.startswith(root + "/"):
+            yield from d.glob("*.jsonl")
+        elif root.startswith(cwd + "/") and cwd != home:
+            for f in d.glob("*.jsonl"):
+                with f.open("rb") as fh:
+                    if needle in fh.read():
+                        yield f
 
 
 def state_path(root):
@@ -206,6 +229,7 @@ def scan(root, batch_chars=DEFAULT_BATCH_CHARS, exclude=()):
     skill_dir = Path(root) / ".claude" / "skills" / "sieve-learnings"
     return {
         "repo": root,
+        "is_git_repo": (Path(root) / ".git").exists(),
         "learnings": str(skill_dir / "SKILL.md"),
         "conversations_log": str(skill_dir / "conversations.md"),
         "run": str(run_dir),
@@ -222,18 +246,107 @@ def commit(run_dir):
     state = load_state(root)
     state["sessions"].update(pending["sessions"])
     state["last_run"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-    if state.get("proposed") == str(run_dir):
-        state.pop("proposed")
     save_state(root, state)
     return len(pending["sessions"])
 
 
-def proposal(state):
-    """The background run waiting for review, if any."""
-    run = state.get("proposed")
-    if run and (Path(run) / "proposals.json").exists():
-        return Path(run)
-    return None
+LEARNINGS_HEADER = """---
+name: sieve-learnings
+description: Rules and lessons learned by people working on this repository with Claude, collected by Sieve. Read at the start of any task in this repository, before planning or writing code. conversations.md in the same folder logs what past conversations worked on.
+---
+
+# Learnings
+
+## Rules
+
+## Insights
+"""
+
+LOG_HEADER = """# Conversations
+
+One line per Claude Code conversation about this repository, newest first. Written by Sieve.
+
+| Date | Conversation | Who | Summary |
+|---|---|---|---|
+"""
+
+
+def git_user(root):
+    try:
+        out = subprocess.run(["git", "-C", root, "config", "user.name"],
+                             capture_output=True, text=True)
+        return out.stdout.strip() or os.environ.get("USER", "")
+    except FileNotFoundError:
+        return os.environ.get("USER", "")
+
+
+def item_line(p):
+    text = p["text"].strip()
+    why = (p.get("why") or "").strip()
+    if why and why not in text:
+        text += " " + why
+    return f"- {text} ({p.get('date', time.strftime('%Y-%m-%d'))})"
+
+
+def write_learnings(path, proposals):
+    lines = (path.read_text() if path.exists() else LEARNINGS_HEADER).splitlines()
+    added = 0
+    for p in proposals:
+        new = item_line(p)
+        old = (p.get("edits") or "").strip()
+        hit = next((i for i, l in enumerate(lines) if old and l.startswith("- ") and old in l), None)
+        if hit is not None:
+            lines[hit] = new
+            continue
+        section = "## Insights" if p.get("kind") == "insight" else "## Rules"
+        if section not in lines:
+            lines += ["", section]
+        top = lines.index(section)
+        if top + 1 >= len(lines) or lines[top + 1].strip():
+            lines.insert(top + 1, "")  # blank line under the heading
+        i = top + 2
+        while i < len(lines) and not lines[i].startswith("## "):
+            i += 1
+        while i > top + 2 and lines[i - 1].strip() == "":  # after the last item
+            i -= 1
+        lines.insert(i, new)
+        added += 1
+    text = "\n".join(lines)
+    text = re.sub(r"\n*^(#{1,2} .*)$\n*", r"\n\n\1\n\n", text, flags=re.M)  # one blank line around headings
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text.strip() + "\n")
+    return added
+
+
+def write_log(path, conversations, who):
+    lines = (path.read_text() if path.exists() else LOG_HEADER).splitlines()
+    head = next(i for i, l in enumerate(lines) if l.startswith("|---")) + 1
+    for c in sorted(conversations, key=lambda c: c.get("date", "")):
+        summary = c.get("summary", "").replace("|", "\\|").replace("\n", " ")
+        row = f"| {c.get('date', '')} | {c['id']} | {who} | {summary} |"
+        hit = next((i for i, l in enumerate(lines) if l.startswith(f"| ") and f"| {c['id']} |" in l), None)
+        if hit is not None:
+            lines[hit] = row
+        else:
+            lines.insert(head, row)
+    path.write_text("\n".join(lines).rstrip() + "\n")
+    return len(conversations)
+
+
+def apply(run_dir, announce=False):
+    """Write a run's proposals to the repo and mark its text as read."""
+    found = json.loads((run_dir / "proposals.json").read_text())
+    root = json.loads((run_dir / "cursors.json").read_text())["root"]
+    folder = Path(root) / ".claude" / "skills" / "sieve-learnings"
+    added = write_learnings(folder / "SKILL.md", found.get("proposals", [])) if found.get("proposals") else 0
+    logged = write_log(folder / "conversations.md", found.get("conversations", []), git_user(root)) if found.get("conversations") else 0
+    commit(run_dir)
+    state = load_state(root)
+    # Only a background run announces itself; after /sieve the person already read the report.
+    state["last_applied"] = {"learnings": added, "conversations": logged, "seen": not announce}
+    save_state(root, state)
+    return {"learnings": added, "conversations": logged, "folder": str(folder)}
 
 
 def running(state):
@@ -251,6 +364,10 @@ def cmd_scan(args):
     print(json.dumps(scan(repo_root(args.cwd), args.batch_chars), indent=2))
 
 
+def cmd_apply(args):
+    print(json.dumps(apply(Path(args.run_dir))))
+
+
 def cmd_commit(args):
     print(json.dumps({"marked": commit(Path(args.run_dir))}))
 
@@ -259,7 +376,6 @@ def cmd_status(args):
     root = repo_root(args.cwd)
     state = load_state(root)
     unread = sum(1 for f in transcripts(root) if is_unread(f, state))
-    run = proposal(state)
     print(json.dumps({
         "repo": root,
         "attached": bool(state.get("attached")),
@@ -267,7 +383,7 @@ def cmd_status(args):
         "conversations_read": len(state["sessions"]),
         "transcripts_with_unread_text": unread,
         "background_running": running(state),
-        "proposed_run": str(run) if run else None,
+        "last_applied": state.get("last_applied"),
     }, indent=2))
 
 
@@ -304,32 +420,35 @@ def cmd_hook(args):
     if not state.get("attached"):
         return
 
-    run = proposal(state)
-    if run:
-        found = json.loads((run / "proposals.json").read_text())
-        n = len(found.get("proposals", []))
-        notify(f"Sieve · {n} learning{'s' if n != 1 else ''} ready to review · /sieve")
-        return
-    if running(state):
-        return
+    news = []
+    done = state.get("last_applied")
+    if done and not done.get("seen"):
+        done["seen"] = True
+        save_state(root, state)
+        n = done["learnings"]
+        if n:
+            news.append(f"added {n} learning{'s' if n != 1 else ''} to .claude/skills/sieve-learnings")
 
     current = data.get("session_id")
-    unread = [f for f in transcripts(root) if f.stem != current and is_unread(f, state)]
-    if not unread:
-        return
-    log = SIEVE_HOME / "background.log"
-    log.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [sys.executable, str(SCRIPT), "background", "--cwd", root]
-    if current:
-        cmd += ["--exclude", current]
-    subprocess.Popen(
-        cmd, cwd=root, start_new_session=True,
-        stdin=subprocess.DEVNULL, stdout=log.open("a"), stderr=subprocess.STDOUT,
-        env={**os.environ, "SIEVE_BACKGROUND": "1"},
-    )
-    people = sum(1 for f in unread if by_a_person(f))
-    if people:
-        notify(f"Sieve · reading {people} past conversation{'s' if people != 1 else ''} in the background")
+    unread = [] if running(state) else [
+        f for f in transcripts(root) if f.stem != current and is_unread(f, state)]
+    if unread:
+        log = SIEVE_HOME / "background.log"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        cmd = [sys.executable, str(SCRIPT), "background", "--cwd", root]
+        if current:
+            cmd += ["--exclude", current]
+        subprocess.Popen(
+            cmd, cwd=root, start_new_session=True,
+            stdin=subprocess.DEVNULL, stdout=log.open("a"), stderr=subprocess.STDOUT,
+            env={**os.environ, "SIEVE_BACKGROUND": "1"},
+        )
+        people = sum(1 for f in unread if by_a_person(f))
+        if people:
+            news.append(f"reading {people} past conversation{'s' if people != 1 else ''} in the background")
+
+    if news:
+        notify("Sieve · " + " · ".join(news))
 
 
 def extract_json(text):
@@ -345,7 +464,7 @@ def extract_json(text):
 def cmd_background(args):
     root = repo_root(args.cwd)
     state = load_state(root)
-    if running(state) or proposal(state):
+    if running(state):
         return
     state["running"] = os.getpid()
     save_state(root, state)
@@ -375,13 +494,8 @@ def cmd_background(args):
         if found is None:
             print(f"{time.ctime()} Sieve: no JSON from background review of {root}, see {run}")
             return
-        if not found.get("proposals") and not found.get("conversations"):
-            commit(run)
-            return
         (run / "proposals.json").write_text(json.dumps(found, indent=1))
-        state = load_state(root)
-        state["proposed"] = str(run)
-        save_state(root, state)
+        apply(run, announce=True)
     finally:
         state = load_state(root)
         if state.get("running") == os.getpid():
@@ -397,6 +511,7 @@ def main():
     s.add_argument("--batch-chars", type=int, default=DEFAULT_BATCH_CHARS)
     c = sub.add_parser("commit")
     c.add_argument("run_dir")
+    sub.add_parser("apply").add_argument("run_dir")
     for name in ("status", "attach", "detach"):
         sub.add_parser(name).add_argument("--cwd", default=os.getcwd())
     sub.add_parser("hook")
@@ -407,6 +522,7 @@ def main():
     {
         "scan": cmd_scan,
         "commit": cmd_commit,
+        "apply": cmd_apply,
         "status": cmd_status,
         "attach": cmd_attach,
         "detach": lambda a: cmd_attach(a, on=False),
