@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="454" viewBox="0 0 1100 454">
+<rect x=".5" y=".5" width="1099" height="453" rx="12" fill="#0D1117" stroke="#30363D"/>
+<path d="M.5 44 V12.5 A12 12 0 0 1 12.5 .5 H1087.5 A12 12 0 0 1 1099.5 12.5 V44 Z" fill="#161B22"/>
+<line x1="0" y1="44" x2="1100" y2="44" stroke="#30363D"/>
+<circle cx="22" cy="22" r="6" fill="#FF5F57"/>
+<circle cx="42" cy="22" r="6" fill="#FEBC2E"/>
+<circle cx="62" cy="22" r="6" fill="#28C840"/>
+<text x="550.0" y="27" text-anchor="middle" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#8B949E">claude — ~/code/autoscience</text>
+<g font-family="SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15">
+<text x="36.0" y="76" fill="#F59E0B">Sieve · reading 2 past conversations in the background</text>
+<text x="36.0" y="126" fill="#8B949E">&gt;</text>
+<text x="54.1" y="126" fill="#E6EDF3" font-weight="700">/sieve</text>
+<text x="54.1" y="176" fill="#E6EDF3">Added 1 learning and updated 2 from 2 conversations: build the view with</text>
+<text x="54.1" y="201" fill="#E6EDF3">shadcn components; two existing rules gained a supporting conversation.</text>
+<text x="54.1" y="226" fill="#E6EDF3">Review the diff in .claude/skills/sieve-learnings/ and commit.</text>
+<text x="36.0" y="276" fill="#8B949E">$</text>
+<text x="54.1" y="276" fill="#E6EDF3" font-weight="700">git diff --word-diff .claude/skills/sieve-learnings/SKILL.md</text>
+<text x="54.1" y="326" fill="#8B949E">|</text>
+<text x="72.1" y="326" fill="#8B949E">ID</text>
+<text x="135.3" y="326" fill="#8B949E">|</text>
+<text x="153.4" y="326" fill="#8B949E">Type</text>
+<text x="198.5" y="326" fill="#8B949E">|</text>
+<text x="216.6" y="326" fill="#8B949E">Learning</text>
+<text x="668.1" y="326" fill="#8B949E">|</text>
+<text x="686.2" y="326" fill="#8B949E">Conversations</text>
+<text x="54.1" y="351" fill="#E6EDF3">|</text>
+<text x="72.1" y="351" fill="#E6EDF3">2281c4</text>
+<text x="135.3" y="351" fill="#E6EDF3">|</text>
+<text x="153.4" y="351" fill="#E6EDF3">rule</text>
+<text x="198.5" y="351" fill="#E6EDF3">|</text>
+<text x="216.6" y="351" fill="#E6EDF3">Show an entity's title as its identity, never …</text>
+<text x="668.1" y="351" fill="#E6EDF3">|</text>
+<text x="686.2" y="351" fill="#E6EDF3">f82c95e0</text>
+<text x="767.4" y="351" fill="#3FB950">{+, 982c95e0+}</text>
+<text x="54.1" y="376" fill="#E6EDF3">|</text>
+<text x="72.1" y="376" fill="#E6EDF3">8aba5a</text>
+<text x="135.3" y="376" fill="#E6EDF3">|</text>
+<text x="153.4" y="376" fill="#E6EDF3">rule</text>
+<text x="198.5" y="376" fill="#E6EDF3">|</text>
+<text x="216.6" y="376" fill="#E6EDF3">Keep prose out of buttons, labels and values: …</text>
+<text x="668.1" y="376" fill="#E6EDF3">|</text>
+<text x="686.2" y="376" fill="#E6EDF3">f82c95e0</text>
+<text x="767.4" y="376" fill="#3FB950">{+, 982c95e0+}</text>
+<text x="36.0" y="401" fill="#3FB950">{+</text>
+<text x="54.1" y="401" fill="#3FB950">|</text>
+<text x="72.1" y="401" fill="#3FB950">c845c0</text>
+<text x="135.3" y="401" fill="#3FB950">|</text>
+<text x="153.4" y="401" fill="#3FB950">rule</text>
+<text x="198.5" y="401" fill="#3FB950">|</text>
+<text x="216.6" y="401" fill="#3FB950">Build the view with React and shadcn components …</text>
+<text x="668.1" y="401" fill="#3FB950">|</text>
+<text x="686.2" y="401" fill="#3FB950">982c95e0+}</text>
+<text x="54.1" y="426" fill="#E6EDF3">|</text>
+<text x="72.1" y="426" fill="#E6EDF3">af3a4b</text>
+<text x="135.3" y="426" fill="#E6EDF3">|</text>
+<text x="153.4" y="426" fill="#E6EDF3">rule</text>
+<text x="198.5" y="426" fill="#E6EDF3">|</text>
+<text x="216.6" y="426" fill="#E6EDF3">Test frontend changes against a server started …</text>
+<text x="668.1" y="426" fill="#E6EDF3">|</text>
+<text x="686.2" y="426" fill="#E6EDF3">da367599</text>
+</g></svg>

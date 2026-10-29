@@ -9,7 +9,7 @@
 
 Sieve reads your past Claude Code conversations about a repository, keeps the few lessons worth sharing, and writes them to a skill that every teammate's Claude reads.
 
-<img src="./assets/sieve-run.svg" alt="Running Sieve in Claude Code" width="100%">
+<img src="./assets/sieve-table.svg" alt="Running Sieve in Claude Code" width="100%">
 
 ## ✨ Highlight features
 
