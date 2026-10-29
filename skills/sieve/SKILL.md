@@ -55,8 +55,8 @@ Build this object:
 }
 ```
 
-`conversations` holds every conversation the readers summarized. In background mode, print ONLY this object and stop. Otherwise write it to `<run>/result.json` and run `sieve.py apply "<run>"`. It applies the ops to the learnings table in `.claude/skills/sieve-learnings/SKILL.md`, adds the conversations to `conversations.md`, and marks them as read. It prints how many rows were added, updated and removed.
+`conversations` holds every conversation the readers summarized. In background mode, print ONLY this object and stop. Otherwise write it to `<run>/result.json` and run `sieve.py apply "<run>"`. It applies the ops to the learnings table in `.claude/skills/sieve-learnings/SKILL.md`, records the conversations in `.claude/sieve/conversations.csv`, and marks them as read. It prints how many rows were added, updated and removed.
 
 ## 5. Report
 
-One or two sentences: how many learnings were added, updated and removed (name them in a few words each if there are three or fewer changes) and how many conversations were logged, and that the changes are in `.claude/skills/sieve-learnings/` for them to review in the diff and commit. Do not list dropped candidates.
+One or two sentences: how many learnings were added, updated and removed (name them in a few words each if there are three or fewer changes) and how many conversations were logged, and that the changes are in `.claude/skills/sieve-learnings/` and `.claude/sieve/conversations.csv` for them to review in the diff and commit. Do not list dropped candidates.

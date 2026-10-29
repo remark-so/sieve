@@ -18,6 +18,7 @@ conversation, and writes the new part as markdown batches.
 """
 
 import argparse
+import csv
 import hashlib
 import json
 import os
@@ -67,18 +68,45 @@ def folder_cwd(folder):
     return None
 
 
+EDIT_TOOLS = {"Edit", "MultiEdit", "Write", "NotebookEdit"}
+
+
+def edited(path, root):
+    """Whether a conversation changed a file inside `root`."""
+    with path.open("rb") as fh:
+        data = fh.read()
+    if root.encode() not in data:
+        return False
+    prefix = root + "/"
+    for line in data.decode(errors="replace").splitlines():
+        if '"tool_use"' not in line or prefix not in line:
+            continue
+        try:
+            content = json.loads(line).get("message", {}).get("content")
+        except json.JSONDecodeError:
+            continue
+        for block in content if isinstance(content, list) else []:
+            if block.get("type") == "tool_use" and block.get("name") in EDIT_TOOLS:
+                target = (block.get("input") or {}).get("file_path") or (block.get("input") or {}).get("notebook_path") or ""
+                if target.startswith(prefix):
+                    return True
+    return False
+
+
 def transcripts(root):
     """Conversations about `root`.
 
     Every conversation started in the repo or below it (subfolders,
     worktrees) counts. A conversation started in a folder above the repo
-    counts only if it touched the repo, which shows up as the repo's path
-    somewhere in the transcript.
+    counts only if it edited a file inside the repo; mentioning the repo
+    is not enough.
     """
     if not PROJECTS.is_dir():
         return
     home = str(Path.home())
-    needle = root.encode()
+    cache_path = SIEVE_HOME / "related" / (encode(root) + ".json")
+    cache = json.loads(cache_path.read_text()) if cache_path.exists() else {}
+    changed = False
     for d in sorted(PROJECTS.iterdir()):
         if not d.is_dir():
             continue
@@ -89,9 +117,16 @@ def transcripts(root):
             yield from d.glob("*.jsonl")
         elif root.startswith(cwd + "/") and cwd != home:
             for f in d.glob("*.jsonl"):
-                with f.open("rb") as fh:
-                    if needle in fh.read():
-                        yield f
+                size = f.stat().st_size
+                known = cache.get(f.stem)
+                if not known or known[0] != size:
+                    known = cache[f.stem] = [size, edited(f, root)]
+                    changed = True
+                if known[1]:
+                    yield f
+    if changed:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(json.dumps(cache))
 
 
 def state_path(root):
@@ -234,7 +269,7 @@ def scan(root, batch_chars=DEFAULT_BATCH_CHARS, exclude=()):
         "is_git_repo": (Path(root) / ".git").exists(),
         "learnings": str(skill_dir / "SKILL.md"),
         "context": str(run_dir / "context.json"),
-        "conversations_log": str(skill_dir / "conversations.md"),
+        "conversations_log": str(log_path(root)),
         "run": str(run_dir),
         "conversations": len(blocks),
         "conversation_ids": ids,
@@ -255,23 +290,15 @@ def commit(run_dir):
 
 LEARNINGS_HEADER = """---
 name: sieve-learnings
-description: Rules and lessons learned by people working on this repository with Claude, collected by Sieve. Read at the start of any task in this repository, before planning or writing code. conversations.md in the same folder logs what past conversations worked on.
+description: Rules and lessons learned by people working on this repository with Claude, collected by Sieve. Read at the start of any task in this repository, before planning or writing code.
 ---
 
 # Learnings
 
-Rules and insights from past Claude Code conversations about this repository, kept by Sieve. Follow the rules; use the insights. Conversations are listed by id in conversations.md.
+Rules and insights from past Claude Code conversations about this repository, kept by Sieve. Follow the rules; use the insights. The conversation ids are rows in .claude/sieve/conversations.csv.
 """
 
 COLUMNS = ["ID", "Type", "Learning", "Why", "Conversations", "Added", "Updated"]
-
-LOG_HEADER = """# Conversations
-
-One line per Claude Code conversation about this repository, newest first. Written by Sieve.
-
-| Date | Conversation | Who | Summary |
-|---|---|---|---|
-"""
 
 CELL_SPLIT = re.compile(r"(?<!\\)\|")
 
@@ -382,18 +409,45 @@ def git_user(root):
         return os.environ.get("USER", "")
 
 
-def write_log(path, conversations, who):
-    lines = (path.read_text() if path.exists() else LOG_HEADER).splitlines()
-    head = next(i for i, l in enumerate(lines) if l.startswith("|---")) + 1
-    for c in sorted(conversations, key=lambda c: c.get("date", "")):
-        row = f"| {c.get('date', '')} | {c['id']} | {who} | {cell(c.get('summary', ''))} |"
-        hit = next((i for i, l in enumerate(lines) if l.startswith("| ") and f"| {c['id']} |" in l), None)
-        if hit is not None:
-            lines[hit] = row
-        else:
-            lines.insert(head, row)
+LOG_FIELDS = ["date", "conversation", "who", "summary"]
+
+
+def log_path(root):
+    return Path(root) / ".claude" / "sieve" / "conversations.csv"
+
+
+def read_log(root):
+    path = log_path(root)
+    if path.exists():
+        with path.open(newline="") as fh:
+            return list(csv.DictReader(fh))
+    # Earlier versions kept a markdown table inside the learnings skill.
+    old = Path(root) / ".claude" / "skills" / "sieve-learnings" / "conversations.md"
+    rows = []
+    if old.exists():
+        for line in old.read_text().splitlines():
+            cells = [uncell(c) for c in CELL_SPLIT.split(line.strip())[1:-1]]
+            if len(cells) == 4 and cells[0][:2] == "20":
+                rows.append(dict(zip(LOG_FIELDS, cells)))
+    return rows
+
+
+def write_log(root, conversations, who):
+    rows = {r["conversation"]: r for r in read_log(root)}
+    for c in conversations:
+        prev = rows.get(c["id"], {})
+        rows[c["id"]] = {"date": prev.get("date") or c.get("date", ""), "conversation": c["id"],
+                         "who": prev.get("who") or who,
+                         "summary": " ".join((c.get("summary") or "").split())}
+    path = log_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines).rstrip() + "\n")
+    with path.open("w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=LOG_FIELDS)
+        w.writeheader()
+        w.writerows(sorted(rows.values(), key=lambda r: (r["date"], r["conversation"]), reverse=True))
+    old = Path(root) / ".claude" / "skills" / "sieve-learnings" / "conversations.md"
+    if old.exists():
+        old.unlink()
     return len(conversations)
 
 
@@ -419,7 +473,7 @@ def apply(run_dir, announce=False):
         done = apply_ops(folder / "SKILL.md", found["ops"])
     logged = 0
     if found.get("conversations"):
-        logged = write_log(folder / "conversations.md", found["conversations"], git_user(root))
+        logged = write_log(root, found["conversations"], git_user(root))
     commit(run_dir)
     state = load_state(root)
     # Only a background run announces itself; after /sieve the person already read the report.
