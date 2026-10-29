@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./assets/logo-dark.svg">
-  <img src="./assets/logo-light.svg" alt="Sieve logo" width="360">
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/sieve-logo-dark.svg">
+  <img src="./assets/sieve-logo-light.svg" alt="Sieve logo" width="360">
 </picture>
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-orange?style=flat-square)](./LICENSE)
