@@ -9,6 +9,7 @@ conversation, and writes the new part as markdown batches.
 
   sieve.py start   [--cwd PATH]     run everything in a separate process (what /sieve does)
   sieve.py show    [--cwd PATH]     open a page with the learnings and the conversation record
+  sieve.py serve   [--cwd PATH]     the local server behind that page (started by show)
   sieve.py scan    [--cwd PATH]     write batches for unread text, print manifest
   sieve.py apply   RUN_DIR          write a run's result.json to the repo, mark it read
   sieve.py commit  RUN_DIR          mark a run's text as read without writing
@@ -619,26 +620,136 @@ def extract_json(text):
         return None
 
 
-def cmd_show(args):
-    """Open a page with the repo's learnings and conversation record."""
-    root = resolve_repo(args.cwd)
+def page_html(root, editable):
     _, rows = read_learnings(Path(root) / ".claude" / "skills" / "sieve-learnings" / "SKILL.md")
     data = {
         "repo": root,
         "generated": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "lastRun": load_state(root).get("last_run"),
+        "editable": editable,
         "learnings": rows,
         "conversations": read_log(root),
     }
     page = (SCRIPT.parent.parent / "dashboard.html").read_text()
-    blob = json.dumps(data).replace("</", "<\\/")
-    page = page.replace("/*SIEVE_DATA*/null", blob, 1)
-    out = SIEVE_HOME / "show" / (encode(root) + ".html")
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(page)
+    return page.replace("/*SIEVE_DATA*/null", json.dumps(data).replace("</", "<\\/"), 1)
+
+
+IDLE_SECONDS = 30 * 60
+
+
+def cmd_serve(args):
+    """Serves the page on localhost and saves edits made on it. Stops after 30 idle minutes."""
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    import threading
+
+    root = resolve_repo(args.cwd)
+    skill = Path(root) / ".claude" / "skills" / "sieve-learnings" / "SKILL.md"
+    last = [time.time()]
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *_):
+            pass
+
+        def reply(self, code, body=b"", kind="text/plain; charset=utf-8"):
+            self.send_response(code)
+            self.send_header("Content-Type", kind)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            last[0] = time.time()
+            if self.path.split("?")[0] in ("/", "/index.html"):
+                self.reply(200, page_html(root, True).encode(), "text/html; charset=utf-8")
+            elif self.path == "/api/ping":
+                self.reply(200, root.encode())
+            else:
+                self.reply(404)
+
+        def do_POST(self):
+            last[0] = time.time()
+            if self.path != "/api/learnings":
+                return self.reply(404)
+            # Only the page this server handed out may write: same-origin requests only.
+            origin = self.headers.get("Origin")
+            if origin and origin != f"http://127.0.0.1:{self.server.server_port}":
+                return self.reply(403, b"Not allowed")
+            try:
+                op = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)))
+            except (ValueError, json.JSONDecodeError):
+                return self.reply(400, b"Bad request")
+            if op.get("op") not in ("update", "remove") or not op.get("id"):
+                return self.reply(400, b"Bad request")
+            if op["op"] == "update" and not (op.get("learning") or "").strip():
+                return self.reply(400, b"Write something, or remove the learning.")
+            _, rows = read_learnings(skill)
+            if not any(r["id"] == op["id"] for r in rows):
+                return self.reply(409, b"This learning changed on disk. Reload the page.")
+            if op["op"] == "update" and not op["learning"].rstrip().endswith((".", "!", "?")):
+                op["learning"] = op["learning"].rstrip() + "."
+            apply_ops(skill, [op])
+            self.reply(204)
+
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    port_file = SIEVE_HOME / "show" / (encode(root) + ".port")
+    port_file.parent.mkdir(parents=True, exist_ok=True)
+    port_file.write_text(str(server.server_port))
+
+    def watch():
+        while time.time() - last[0] < IDLE_SECONDS:
+            time.sleep(30)
+        server.shutdown()
+
+    threading.Thread(target=watch, daemon=True).start()
+    try:
+        server.serve_forever()
+    finally:
+        if port_file.exists() and port_file.read_text() == str(server.server_port):
+            port_file.unlink()
+
+
+def running_server(root):
+    """The port of a page server already running for `root`, if any."""
+    port_file = SIEVE_HOME / "show" / (encode(root) + ".port")
+    if not port_file.exists():
+        return None
+    port = port_file.read_text().strip()
+    try:
+        import urllib.request
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/ping", timeout=1) as res:
+            return port if res.read().decode() == root else None
+    except OSError:
+        return None
+
+
+def cmd_show(args):
+    """Open the repo's learnings and conversation record in the browser, served locally so edits save."""
+    root = resolve_repo(args.cwd)
+    port = running_server(root)
+    if not port:
+        port_file = SIEVE_HOME / "show" / (encode(root) + ".port")
+        if port_file.exists():
+            port_file.unlink()
+        log = SIEVE_HOME / "background.log"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.Popen(
+            [sys.executable, str(SCRIPT), "serve", "--cwd", root],
+            cwd=root, start_new_session=True,
+            stdin=subprocess.DEVNULL, stdout=log.open("a"), stderr=subprocess.STDOUT,
+        )
+        for _ in range(50):
+            time.sleep(0.1)
+            port = running_server(root)
+            if port:
+                break
+    if not port:
+        print(json.dumps({"error": "The page server did not start. See ~/.claude/sieve/background.log."}))
+        return
+    url = f"http://127.0.0.1:{port}/"
     if not args.no_open:
-        webbrowser.open(out.as_uri())
-    print(json.dumps({"page": str(out), "learnings": len(rows), "conversations": len(data["conversations"])}))
+        webbrowser.open(url)
+    print(json.dumps({"url": url}))
 
 
 def cmd_start(args):
@@ -720,6 +831,9 @@ def main():
     sh = sub.add_parser("show")
     sh.add_argument("--cwd", default=os.getcwd())
     sh.add_argument("--no-open", action="store_true")
+    sv = sub.add_parser("serve")
+    sv.add_argument("--cwd", default=os.getcwd())
+    sv.add_argument("--port", type=int, default=0)
     args = ap.parse_args()
     {
         "scan": cmd_scan,
@@ -732,6 +846,7 @@ def main():
         "background": cmd_background,
         "start": cmd_start,
         "show": cmd_show,
+        "serve": cmd_serve,
     }[args.cmd](args)
 
 

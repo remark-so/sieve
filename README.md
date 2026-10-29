@@ -5,7 +5,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-orange?style=flat-square)](./LICENSE)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757?style=flat-square)](https://code.claude.com/docs/en/plugins)
-[![Version](https://img.shields.io/badge/version-0.9.1-blue?style=flat-square)](./.claude-plugin/plugin.json)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue?style=flat-square)](./.claude-plugin/plugin.json)
 
 Sieve reads your past Claude Code conversations about a repository, keeps the few lessons worth sharing, and writes them to a skill that every teammate's Claude reads.
 
@@ -52,7 +52,7 @@ Sieve starts a separate Claude process and gives your conversation back right aw
 /sieve --show
 ```
 
-Opens a page in your browser with the repository's learnings, which you can search and filter by rules and insights, and the record of conversations Sieve has read.
+Opens a page in your browser with the repository's learnings and the record of conversations, built with [Arc](https://uiarc.dev). Search and filter learnings by rules and insights, see which conversations each one came from, and edit or remove a learning in place: the change is saved to the learnings file for you to commit.
 
 ## 🔁 Run it automatically
 
@@ -84,7 +84,7 @@ Your conversations never leave your computer. Sieve writes to the repo only the 
 
 ## 👋 Contribute
 
-Issues and pull requests are welcome. The command lives in [`skills/sieve/SKILL.md`](./skills/sieve/SKILL.md), the reader that goes through each batch in [`agents/reader.md`](./agents/reader.md), and the script that condenses transcripts in [`skills/sieve/scripts/sieve.py`](./skills/sieve/scripts/sieve.py).
+Issues and pull requests are welcome. The page behind `/sieve --show` is built from licensed Arc Pro blocks, so only the compiled page ships here. The command lives in [`skills/sieve/SKILL.md`](./skills/sieve/SKILL.md), the reader that goes through each batch in [`agents/reader.md`](./agents/reader.md), and the script that condenses transcripts in [`skills/sieve/scripts/sieve.py`](./skills/sieve/scripts/sieve.py).
 
 ## License
 
