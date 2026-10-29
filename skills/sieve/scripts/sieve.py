@@ -7,6 +7,7 @@ Claude Code stores every conversation as a .jsonl file under
 Claude wrote to each other, remembers how far it has read in every
 conversation, and writes the new part as markdown batches.
 
+  sieve.py start   [--cwd PATH]     run everything in a separate process (what /sieve does)
   sieve.py scan    [--cwd PATH]     write batches for unread text, print manifest
   sieve.py apply   RUN_DIR          write a run's result.json to the repo, mark it read
   sieve.py commit  RUN_DIR          mark a run's text as read without writing
@@ -55,6 +56,16 @@ def repo_root(cwd):
         return out.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return cwd
+
+
+def resolve_repo(cwd):
+    """The repository to work on: the git repo around `cwd`, or, when `cwd` is a
+    plain folder holding exactly one git repo, that repo."""
+    root = repo_root(cwd)
+    if (Path(root) / ".git").exists():
+        return root
+    inner = [d for d in Path(cwd).iterdir() if d.is_dir() and (d / ".git").exists()] if Path(cwd).is_dir() else []
+    return str(inner[0]) if len(inner) == 1 else root
 
 
 def folder_cwd(folder):
@@ -494,7 +505,7 @@ def running(state):
 
 
 def cmd_scan(args):
-    print(json.dumps(scan(repo_root(args.cwd), args.batch_chars), indent=2))
+    print(json.dumps(scan(resolve_repo(args.cwd), args.batch_chars), indent=2))
 
 
 def cmd_apply(args):
@@ -506,7 +517,7 @@ def cmd_commit(args):
 
 
 def cmd_status(args):
-    root = repo_root(args.cwd)
+    root = resolve_repo(args.cwd)
     state = load_state(root)
     unread = sum(1 for f in transcripts(root) if is_unread(f, state))
     print(json.dumps({
@@ -521,7 +532,7 @@ def cmd_status(args):
 
 
 def cmd_attach(args, on=True):
-    root = repo_root(args.cwd)
+    root = resolve_repo(args.cwd)
     state = load_state(root)
     state["attached"] = on
     save_state(root, state)
@@ -548,7 +559,7 @@ def cmd_hook(args):
         data = json.load(sys.stdin)
     except json.JSONDecodeError:
         return
-    root = repo_root(data.get("cwd") or os.getcwd())
+    root = resolve_repo(data.get("cwd") or os.getcwd())
     state = load_state(root)
     if not state.get("attached"):
         return
@@ -594,8 +605,42 @@ def extract_json(text):
         return None
 
 
+def desktop_notice(text):
+    """A macOS notification; silently skipped elsewhere."""
+    if sys.platform == "darwin" and shutil.which("osascript"):
+        msg = text.replace("\\", "").replace('"', "'")
+        subprocess.run(["osascript", "-e", f'display notification "{msg}" with title "Sieve"'],
+                       capture_output=True)
+
+
+def describe(done, repo):
+    parts = [f"{done[k]} {k}" for k in ("added", "updated", "removed") if done.get(k)]
+    name = Path(repo).name
+    if parts:
+        return f"{', '.join(parts)} in {name}'s learnings"
+    return f"Nothing new to learn in {name}"
+
+
+def cmd_start(args):
+    """/sieve: run the whole thing in a separate process and return at once."""
+    root = resolve_repo(args.cwd)
+    state = load_state(root)
+    if running(state):
+        print(json.dumps({"started": False, "reason": "already running", "repo": root}))
+        return
+    log = SIEVE_HOME / "background.log"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.Popen(
+        [sys.executable, str(SCRIPT), "background", "--cwd", root, "--notify"],
+        cwd=root, start_new_session=True,
+        stdin=subprocess.DEVNULL, stdout=log.open("a"), stderr=subprocess.STDOUT,
+        env={**os.environ, "SIEVE_BACKGROUND": "1"},
+    )
+    print(json.dumps({"started": True, "repo": root}))
+
+
 def cmd_background(args):
-    root = repo_root(args.cwd)
+    root = resolve_repo(args.cwd)
     state = load_state(root)
     if running(state):
         return
@@ -606,6 +651,8 @@ def cmd_background(args):
         run = Path(manifest["run"])
         if not manifest["conversations"]:
             commit(run)  # only tool traffic or SDK sessions: nothing to propose
+            if args.notify:
+                desktop_notice(describe({}, root))
             return
         claude = shutil.which("claude")
         if not claude:
@@ -626,9 +673,15 @@ def cmd_background(args):
         (run / "background-output.txt").write_text(out.stdout + out.stderr)
         if found is None:
             print(f"{time.ctime()} Sieve: no JSON from background review of {root}, see {run}")
+            if args.notify:
+                desktop_notice(f"Could not finish in {Path(root).name}. Run /sieve again.")
             return
         (run / "result.json").write_text(json.dumps(found, indent=1))
-        apply(run, announce=True)
+        # A run started by /sieve reports with a desktop notification; one started
+        # by the hook reports in the terminal line of the next session.
+        done = apply(run, announce=not args.notify)
+        if args.notify:
+            desktop_notice(describe(done, root))
     finally:
         state = load_state(root)
         if state.get("running") == os.getpid():
@@ -651,6 +704,8 @@ def main():
     b = sub.add_parser("background")
     b.add_argument("--cwd", required=True)
     b.add_argument("--exclude", action="append")
+    b.add_argument("--notify", action="store_true")
+    sub.add_parser("start").add_argument("--cwd", default=os.getcwd())
     args = ap.parse_args()
     {
         "scan": cmd_scan,
@@ -661,6 +716,7 @@ def main():
         "detach": lambda a: cmd_attach(a, on=False),
         "hook": cmd_hook,
         "background": cmd_background,
+        "start": cmd_start,
     }[args.cmd](args)
 
 

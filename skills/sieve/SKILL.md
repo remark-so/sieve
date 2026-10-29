@@ -1,7 +1,7 @@
 ---
 name: sieve
 description: Read this project's past Claude Code conversations that have not been read yet, log a one-line summary of each, and write the few rules and insights worth sharing to the repo's sieve-learnings skill. Run with /sieve; /sieve --attach to do it automatically at every session start, /sieve --detach to stop.
-argument-hint: "[--attach | --detach | --status]"
+argument-hint: "[--attach | --detach | --status | --here]"
 disable-model-invocation: true
 ---
 
@@ -9,23 +9,22 @@ disable-model-invocation: true
 
 Turn what people and Claude learned in past conversations about this repository into a short, shared table of learnings that every teammate's Claude reads, plus a log of what each conversation was about. It works in three layers: a cheap model extracts candidates, a strong model compares them with what the table already says, and a script applies the result. Bring little, and only what is high quality.
 
-Work without asking the user anything. The user reviews the result in the git diff, not in this conversation. Talk to the user in the language they use with you.
+Work without asking the user anything. The user reviews the result in the git diff. Talk to the user in the language they use with you.
 
 The script used below is `python3 "${CLAUDE_PLUGIN_ROOT}/skills/sieve/scripts/sieve.py"`, called `sieve.py` here.
 
 ## Pick the mode from the arguments: `$ARGUMENTS`
 
-- `--attach`: run `sieve.py attach --cwd "$PWD"`. Tell the user in one sentence that from now on Sieve reads new conversations in the background whenever they open Claude Code in this repository, and a single line in the terminal says when it adds something. Stop.
+- No arguments: run `sieve.py start --cwd "$PWD"` and nothing else. If it printed `"started": true`, reply with one sentence: Sieve is reading the conversations in the background and a notification will say what changed when it finishes. If it was already running, say so in one sentence. Do not read files, launch agents or do any of the steps below.
+- `--attach`: run `sieve.py attach --cwd "$PWD"`. Tell the user in one sentence that from now on Sieve reads new conversations in the background whenever they open Claude Code in this repository, and a single line in the terminal says when it changes something. Stop.
 - `--detach`: run `sieve.py detach --cwd "$PWD"`, confirm in one sentence, stop.
 - `--status`: run `sieve.py status --cwd "$PWD"` and answer in one sentence. Stop.
-- `--background <run dir>`: you were started by the hook with no person present. Do steps 2 to 4 for that run dir (its batches are the `batch-*.md` files in it, and its context is `context.json`). Print ONLY the JSON object from step 4 and stop. Do not write files.
-- No arguments: steps 1 to 5 below.
+- `--background <run dir>`: you are the separate process the script started, with no person watching. The script already did step 1. Do steps 2 to 4 for that run dir (its batches are the `batch-*.md` files in it, and its context is `context.json`), print ONLY the JSON object from step 4, and stop. Do not write files.
+- `--here`: run every step below in this conversation, for debugging.
 
 ## 1. Scan
 
 Run `sieve.py scan --cwd "$PWD"`. It prints a JSON manifest: `repo`, `is_git_repo`, `learnings`, `context`, `conversations_log`, `run`, `conversations`, `batches` (markdown files holding only what people and Claude wrote; tool output is already stripped).
-
-If `is_git_repo` is false and exactly one folder directly inside `$PWD` is a git repository, scan again with `--cwd` set to that repository and use that manifest instead.
 
 If `conversations` is 0, run `sieve.py commit "<run>"`, tell the user in one sentence there is nothing new since the last run, and stop.
 
