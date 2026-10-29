@@ -7,7 +7,9 @@
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757?style=flat-square)](https://code.claude.com/docs/en/plugins)
 [![Version](https://img.shields.io/badge/version-0.3.0-blue?style=flat-square)](./.claude-plugin/plugin.json)
 
-Sieve turns your past Claude Code conversations about a repository into a short, shared skill of rules and lessons that every teammate's Claude reads. It reads only what you and Claude wrote to each other, keeps the few lessons another person would trip over without, and writes them to the repo after you approve them. Next to them it keeps a log with one line per conversation, so the team can see what was worked on and when.
+### What one Claude learns, the whole team's Claude knows.
+
+Sieve reads your past Claude Code conversations about a repository, keeps the few lessons worth sharing, and, once you approve them, writes them to a skill that every teammate's Claude reads.
 
 <img src="./assets/review.svg" alt="Reviewing Sieve's proposals in Claude Code" width="100%">
 
