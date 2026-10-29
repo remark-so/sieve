@@ -8,6 +8,7 @@ Claude wrote to each other, remembers how far it has read in every
 conversation, and writes the new part as markdown batches.
 
   sieve.py start   [--cwd PATH]     run everything in a separate process (what /sieve does)
+  sieve.py show    [--cwd PATH]     open a page with the learnings and the conversation record
   sieve.py scan    [--cwd PATH]     write batches for unread text, print manifest
   sieve.py apply   RUN_DIR          write a run's result.json to the repo, mark it read
   sieve.py commit  RUN_DIR          mark a run's text as read without writing
@@ -28,6 +29,7 @@ import shutil
 import subprocess
 import sys
 import time
+import webbrowser
 from pathlib import Path
 
 HOME = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
@@ -605,6 +607,28 @@ def extract_json(text):
         return None
 
 
+def cmd_show(args):
+    """Open a page with the repo's learnings and conversation record."""
+    root = resolve_repo(args.cwd)
+    _, rows = read_learnings(Path(root) / ".claude" / "skills" / "sieve-learnings" / "SKILL.md")
+    data = {
+        "repo": root,
+        "generated": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "lastRun": load_state(root).get("last_run"),
+        "learnings": rows,
+        "conversations": read_log(root),
+    }
+    page = (SCRIPT.parent.parent / "dashboard.html").read_text()
+    blob = json.dumps(data).replace("</", "<\\/")
+    page = page.replace("/*SIEVE_DATA*/null", blob, 1)
+    out = SIEVE_HOME / "show" / (encode(root) + ".html")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(page)
+    if not args.no_open:
+        webbrowser.open(out.as_uri())
+    print(json.dumps({"page": str(out), "learnings": len(rows), "conversations": len(data["conversations"])}))
+
+
 def cmd_start(args):
     """/sieve: run the whole thing in a separate process and return at once."""
     root = resolve_repo(args.cwd)
@@ -681,6 +705,9 @@ def main():
     b.add_argument("--cwd", required=True)
     b.add_argument("--exclude", action="append")
     sub.add_parser("start").add_argument("--cwd", default=os.getcwd())
+    sh = sub.add_parser("show")
+    sh.add_argument("--cwd", default=os.getcwd())
+    sh.add_argument("--no-open", action="store_true")
     args = ap.parse_args()
     {
         "scan": cmd_scan,
@@ -692,6 +719,7 @@ def main():
         "hook": cmd_hook,
         "background": cmd_background,
         "start": cmd_start,
+        "show": cmd_show,
     }[args.cmd](args)
 
 

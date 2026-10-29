@@ -5,7 +5,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-orange?style=flat-square)](./LICENSE)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757?style=flat-square)](https://code.claude.com/docs/en/plugins)
-[![Version](https://img.shields.io/badge/version-0.8.0-blue?style=flat-square)](./.claude-plugin/plugin.json)
+[![Version](https://img.shields.io/badge/version-0.9.0-blue?style=flat-square)](./.claude-plugin/plugin.json)
 
 Sieve reads your past Claude Code conversations about a repository, keeps the few lessons worth sharing, and writes them to a skill that every teammate's Claude reads.
 
@@ -45,6 +45,14 @@ Open Claude Code in any repository and run:
 ```
 
 Sieve starts a separate Claude process and gives your conversation back right away; none of its work shows up in your session. It reads the conversations you have had about that repository, including ones you started in a folder above it that edited files in it, and writes what it found to `.claude/skills/sieve-learnings/`. Review the diff and commit, and your team's Claude reads them from then on.
+
+## 📊 See what it learned
+
+```
+/sieve --show
+```
+
+Opens a page in your browser with the repository's learnings, which you can search and filter by rules and insights, and the record of conversations Sieve has read.
 
 ## 🔁 Run it automatically
 

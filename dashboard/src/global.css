@@ -1,0 +1,20 @@
+:root {
+  --font-geist: "Geist";
+  --font-inter: "Inter";
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Controls never select their text, Safari included. */
+button, [role="tab"], [role="radio"], [role="button"], th, svg text {
+  -webkit-user-select: none;
+  user-select: none;
+}
+button, [role="tab"], [role="radio"], [role="button"] { cursor: pointer; }
+button svg { cursor: inherit; }
