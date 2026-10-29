@@ -183,7 +183,6 @@ function ConversationsPanel(props: {
 }) {
   const { rows, onlyFor, clearOnlyFor, openLearnings } = props;
   const [query, setQuery] = useState("");
-  const authors = new Set(rows.map((r) => r.who));
   const visible = rows.filter(
     (r) => (!onlyFor || onlyFor.conversations.includes(r.conversation)) && matches(query, r.summary, r.who, r.conversation),
   );
@@ -202,7 +201,7 @@ function ConversationsPanel(props: {
     { key: "summary", label: "Summary", render: (v) => <span className={styles.summary}>{String(v)}</span> },
     { key: "date", label: "Date", width: 132, render: (v) => <span className={styles.nowrap}>{formatDate(String(v))}</span> },
   ];
-  if (authors.size > 1) columns.push({ key: "who", label: "Who", width: 160 });
+  columns.push({ key: "who", label: "Who", width: 160 });
   columns.push(
     {
       key: "learned",
@@ -265,10 +264,7 @@ export function App() {
   const [conversationFilter, setConversationFilter] = useState<string | null>(null);
 
   const name = data.repo.split("/").filter(Boolean).pop() ?? data.repo;
-  const authors = [...new Set(data.conversations.map((c) => c.who))];
-  const meta = ["Learnings from Claude Code conversations"];
-  if (authors.length === 1) meta.push(authors[0]);
-  if (data.lastRun) meta.push(`last read ${formatDate(data.lastRun)}`);
+  const meta = ["Learnings shared by everyone who works on this repository with Claude Code"];
 
   return (
     <main className={styles.page}>
