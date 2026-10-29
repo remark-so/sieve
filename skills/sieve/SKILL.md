@@ -19,7 +19,7 @@ The script used below is `python3 "${CLAUDE_PLUGIN_ROOT}/skills/sieve/scripts/si
 - `--attach`: run `sieve.py attach --cwd "$PWD"`. Tell the user in one sentence that from now on Sieve reads new conversations in the background whenever they open Claude Code in this repository, and a single line in the terminal says when it changes something. Stop.
 - `--detach`: run `sieve.py detach --cwd "$PWD"`, confirm in one sentence, stop.
 - `--status`: run `sieve.py status --cwd "$PWD"` and answer in one sentence. Stop.
-- `--show`: run `sieve.py show --cwd "$PWD"`. It opens a page in the browser with the learnings and the conversation record; edits and removals made there are saved to the learnings file. Reply with one sentence saying it opened. Stop.
+- `--show`: run `sieve.py show --cwd "$PWD"`. It opens a page in the browser with the learnings and the conversation record. Reply with one sentence saying it opened. Stop.
 - `--background <run dir>`: you are the separate process the script started, with no person watching. The script already did step 1. Do steps 2 to 4 for that run dir (its batches are the `batch-*.md` files in it, and its context is `context.json`), print ONLY the JSON object from step 4, and stop. Do not write files.
 - `--here`: run every step below in this conversation, for debugging.
 

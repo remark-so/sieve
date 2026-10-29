@@ -200,15 +200,15 @@ def invokes_sieve(record):
     return bool(re.search(r"<command-name>/?(sieve:)?sieve</command-name>", text))
 
 
-def local_date(timestamp):
+def local_date(timestamp, with_time=False):
     """Transcript timestamps are UTC; dates shown to people are local."""
     if not timestamp:
         return ""
     try:
-        when = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        when = datetime.fromisoformat(timestamp.replace("Z", "+00:00")).astimezone()
     except ValueError:
         return timestamp[:10]
-    return when.astimezone().date().isoformat()
+    return when.strftime("%Y-%m-%dT%H:%M") if with_time else when.date().isoformat()
 
 
 def condense(path, start):
@@ -232,6 +232,7 @@ def condense(path, start):
         if r.get("isSidechain") or r.get("isMeta"):
             continue
         meta.setdefault("date", local_date(r.get("timestamp")))
+        meta.setdefault("started", local_date(r.get("timestamp"), with_time=True))
         meta.setdefault("branch", r.get("gitBranch") or "")
         if kind == "user":
             if invokes_sieve(r):
@@ -252,7 +253,7 @@ def scan(root, batch_chars=DEFAULT_BATCH_CHARS, exclude=()):
     run_dir = SIEVE_HOME / "runs" / encode(root) / time.strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    cursors, blocks, ids = {}, [], []
+    cursors, blocks, ids, started = {}, [], [], {}
     for f in sorted(transcripts(root), key=lambda p: p.stat().st_mtime):
         sid = f.stem
         if sid in exclude or not is_unread(f, state):
@@ -271,6 +272,8 @@ def scan(root, batch_chars=DEFAULT_BATCH_CHARS, exclude=()):
         body = "\n\n".join(f"**{who}:** {text}" for who, text in turns)
         blocks.append(head + "\n\n" + body + "\n")
         ids.append(sid[:8])
+        if not start and meta.get("started"):
+            started[sid[:8]] = meta["started"]
 
     batches, current = [], ""
     for block in blocks:
@@ -286,7 +289,7 @@ def scan(root, batch_chars=DEFAULT_BATCH_CHARS, exclude=()):
         p = run_dir / f"batch-{i:03d}.md"
         p.write_text(text)
         paths.append(str(p))
-    (run_dir / "cursors.json").write_text(json.dumps({"root": root, "sessions": cursors}))
+    (run_dir / "cursors.json").write_text(json.dumps({"root": root, "sessions": cursors, "started": started}))
     write_context(run_dir, root)
 
     skill_dir = Path(root) / ".claude" / "skills" / "sieve-learnings"
@@ -458,11 +461,13 @@ def read_log(root):
     return rows
 
 
-def write_log(root, conversations, who):
+def write_log(root, conversations, who, started=None):
+    """The record of conversations. `date` is when a conversation started, local time, to the minute."""
+    started = started or {}
     rows = {r["conversation"]: r for r in read_log(root)}
     for c in conversations:
         prev = rows.get(c["id"], {})
-        rows[c["id"]] = {"date": prev.get("date") or c.get("date", ""), "conversation": c["id"],
+        rows[c["id"]] = {"date": prev.get("date") or started.get(c["id"]) or c.get("date", ""), "conversation": c["id"],
                          "who": prev.get("who") or who,
                          "summary": " ".join((c.get("summary") or "").split())}
     path = log_path(root)
@@ -499,7 +504,8 @@ def apply(run_dir, announce=False):
         done = apply_ops(folder / "SKILL.md", found["ops"])
     logged = 0
     if found.get("conversations"):
-        logged = write_log(root, found["conversations"], git_user(root))
+        started = json.loads((run_dir / "cursors.json").read_text()).get("started", {})
+        logged = write_log(root, found["conversations"], git_user(root), started)
     commit(run_dir)
     state = load_state(root)
     # Only a background run announces itself; after /sieve the person already read the report.
@@ -620,10 +626,21 @@ def extract_json(text):
         return None
 
 
+def git_remote(root):
+    """owner/name of the origin remote, or None."""
+    try:
+        url = subprocess.run(["git", "-C", root, "remote", "get-url", "origin"], capture_output=True, text=True).stdout.strip()
+    except FileNotFoundError:
+        return None
+    match = re.search(r"[:/]([^/:]+/[^/]+?)(?:\.git)?$", url)
+    return match.group(1) if match else None
+
+
 def page_html(root, editable):
     _, rows = read_learnings(Path(root) / ".claude" / "skills" / "sieve-learnings" / "SKILL.md")
     data = {
         "repo": root,
+        "remote": git_remote(root),
         "generated": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "lastRun": load_state(root).get("last_run"),
         "editable": editable,

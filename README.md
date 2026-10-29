@@ -5,7 +5,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-orange?style=flat-square)](./LICENSE)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757?style=flat-square)](https://code.claude.com/docs/en/plugins)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue?style=flat-square)](./.claude-plugin/plugin.json)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue?style=flat-square)](./.claude-plugin/plugin.json)
 
 Sieve reads your past Claude Code conversations about a repository, keeps the few lessons worth sharing, and writes them to a skill that every teammate's Claude reads.
 
@@ -52,7 +52,7 @@ Sieve starts a separate Claude process and gives your conversation back right aw
 /sieve --show
 ```
 
-Opens a page in your browser with the repository's learnings and the record of conversations, built with [Arc](https://uiarc.dev). Search and filter learnings by rules and insights, see which conversations each one came from, and edit or remove a learning in place: the change is saved to the learnings file for you to commit.
+Opens a page in your browser with the repository's learnings and the record of conversations, built with [Arc](https://uiarc.dev). Search and filter learnings by rules and insights, and jump from a learning to the conversations it came from, or from a conversation to what it taught.
 
 ## 🔁 Run it automatically
 
