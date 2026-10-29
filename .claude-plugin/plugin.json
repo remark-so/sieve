@@ -1,6 +1,6 @@
 {
   "name": "sieve",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Turn your past Claude Code conversations about a repo into a short, shared skill of rules and lessons the whole team's Claude reads.",
   "author": { "name": "Rodrigo Nader" },
   "repository": "https://github.com/remark-so/sieve",

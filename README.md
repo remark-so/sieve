@@ -5,7 +5,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-orange?style=flat-square)](./LICENSE)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757?style=flat-square)](https://code.claude.com/docs/en/plugins)
-[![Version](https://img.shields.io/badge/version-1.1.1-blue?style=flat-square)](./.claude-plugin/plugin.json)
+[![Version](https://img.shields.io/badge/version-1.1.2-blue?style=flat-square)](./.claude-plugin/plugin.json)
 
 Sieve reads your past Claude Code conversations about a repository, keeps the few lessons worth sharing, and writes them to a skill that every teammate's Claude reads.
 
